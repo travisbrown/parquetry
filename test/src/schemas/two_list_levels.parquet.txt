@@ -1,0 +1,11 @@
+message two_list_levels {
+    required group values (list) {
+        repeated group list {
+            required group element (list) {
+                repeated group list {
+                    required boolean element;
+                }
+            }
+        }
+    }
+}

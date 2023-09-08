@@ -1,0 +1,26 @@
+message nested {
+    required int64 a (integer(64, false));
+    required int64 bc (timestamp(millis, true));
+    optional int32 cde;
+
+    optional group foox {
+        required byte_array fghi (string);
+
+        required group bar {
+            required byte_array jklmnop (string);
+
+            required group quxes (list) {
+                repeated group list {
+                    optional group element {
+                        optional group xuqes (list) {
+                            repeated group list {
+                                required boolean element;
+                            }
+                        }
+                        required byte_array oof (string);
+                    }
+                }
+            }
+        }
+    }
+}

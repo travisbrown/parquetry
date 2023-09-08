@@ -1,0 +1,727 @@
+#![cfg_attr(rustfmt, rustfmt_skip)]
+const SCHEMA_SOURCE: &str = "message user {
+    required int64 id (integer(64, false));
+    required int64 ts (timestamp(millis, true));
+    optional int32 status;
+
+    optional group user_info {
+        required byte_array screen_name (string);
+
+        optional group user_name_info {
+            required byte_array name (string);
+
+            optional group user_profile_info {
+                required int64 created_at (timestamp(millis, true));
+                required byte_array location (string);
+                required byte_array description (string);
+                optional byte_array url (string);
+
+                required int32 followers_count;
+                required int32 friends_count;
+                required int32 favourites_count;
+                required int32 statuses_count;
+
+                optional group withheld_in_countries (list) {
+                    repeated group list {
+                        required byte_array element (string);
+                    }
+                }
+            }
+        }
+    }
+}";
+lazy_static::lazy_static! {
+    pub static ref SCHEMA : parquet::schema::types::TypePtr =
+    std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
+    .unwrap());
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct User {
+    pub id: u64,
+    pub ts: chrono::DateTime<chrono::Utc>,
+    pub status: Option<i32>,
+    pub user_info: Option<UserInfo>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserInfo {
+    pub screen_name: String,
+    pub user_name_info: Option<UserNameInfo>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserNameInfo {
+    pub name: String,
+    pub user_profile_info: Option<UserProfileInfo>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserProfileInfo {
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub location: String,
+    pub description: String,
+    pub url: Option<String>,
+    pub followers_count: i32,
+    pub friends_count: i32,
+    pub favourites_count: i32,
+    pub statuses_count: i32,
+    pub withheld_in_countries: Option<Vec<String>>,
+}
+impl parquetry::Schema for User {
+    fn source(&self) -> &str {
+        SCHEMA_SOURCE
+    }
+    fn schema(&self) -> parquet::schema::types::TypePtr {
+        SCHEMA.clone()
+    }
+    fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+        groups: I,
+    ) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
+        {
+            let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
+                writer,
+                SCHEMA.clone(),
+                std::sync::Arc::new(properties),
+            )?;
+            let mut values_0000 = vec![];
+            let mut values_0001 = vec![];
+            let mut values_0002 = vec![];
+            let mut def_levels_0002 = vec![];
+            let mut values_0003 = vec![];
+            let mut def_levels_0003 = vec![];
+            let mut values_0004 = vec![];
+            let mut def_levels_0004 = vec![];
+            let mut values_0005 = vec![];
+            let mut def_levels_0005 = vec![];
+            let mut values_0006 = vec![];
+            let mut def_levels_0006 = vec![];
+            let mut values_0007 = vec![];
+            let mut def_levels_0007 = vec![];
+            let mut values_0008 = vec![];
+            let mut def_levels_0008 = vec![];
+            let mut values_0009 = vec![];
+            let mut def_levels_0009 = vec![];
+            let mut values_0010 = vec![];
+            let mut def_levels_0010 = vec![];
+            let mut values_0011 = vec![];
+            let mut def_levels_0011 = vec![];
+            let mut values_0012 = vec![];
+            let mut def_levels_0012 = vec![];
+            let mut values_0013 = vec![];
+            let mut def_levels_0013 = vec![];
+            let mut rep_levels_0013 = vec![];
+            for group in groups {
+                for User { id, ts, status, user_info } in &group {
+                    values_0000.push(*id as i64);
+                    values_0001.push(ts.timestamp_millis());
+                    match status {
+                        Some(status) => {
+                            values_0002.push(*status);
+                            def_levels_0002.push(1);
+                        }
+                        None => {
+                            def_levels_0002.push(0);
+                        }
+                    }
+                    match user_info {
+                        Some(UserInfo { screen_name, user_name_info }) => {
+                            values_0003.push(screen_name.as_str().into());
+                            def_levels_0003.push(1);
+                            match user_name_info {
+                                Some(UserNameInfo { name, user_profile_info }) => {
+                                    values_0004.push(name.as_str().into());
+                                    def_levels_0004.push(2);
+                                    match user_profile_info {
+                                        Some(
+                                            UserProfileInfo {
+                                                created_at,
+                                                location,
+                                                description,
+                                                url,
+                                                followers_count,
+                                                friends_count,
+                                                favourites_count,
+                                                statuses_count,
+                                                withheld_in_countries,
+                                            },
+                                        ) => {
+                                            values_0005.push(created_at.timestamp_millis());
+                                            def_levels_0005.push(3);
+                                            values_0006.push(location.as_str().into());
+                                            def_levels_0006.push(3);
+                                            values_0007.push(description.as_str().into());
+                                            def_levels_0007.push(3);
+                                            match url {
+                                                Some(url) => {
+                                                    values_0008.push(url.as_str().into());
+                                                    def_levels_0008.push(4);
+                                                }
+                                                None => {
+                                                    def_levels_0008.push(3);
+                                                }
+                                            }
+                                            values_0009.push(*followers_count);
+                                            def_levels_0009.push(3);
+                                            values_0010.push(*friends_count);
+                                            def_levels_0010.push(3);
+                                            values_0011.push(*favourites_count);
+                                            def_levels_0011.push(3);
+                                            values_0012.push(*statuses_count);
+                                            def_levels_0012.push(3);
+                                            match withheld_in_countries {
+                                                Some(withheld_in_countries) => {
+                                                    if withheld_in_countries.is_empty() {
+                                                        def_levels_0013.push(4);
+                                                        rep_levels_0013.push(0);
+                                                    } else {
+                                                        let mut first = true;
+                                                        for element in withheld_in_countries {
+                                                            if first {
+                                                                values_0013.push(element.as_str().into());
+                                                                def_levels_0013.push(5);
+                                                                rep_levels_0013.push(0);
+                                                                first = false;
+                                                            } else {
+                                                                values_0013.push(element.as_str().into());
+                                                                def_levels_0013.push(5);
+                                                                rep_levels_0013.push(1);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                None => {
+                                                    def_levels_0013.push(3);
+                                                    rep_levels_0013.push(0);
+                                                }
+                                            }
+                                        }
+                                        None => {
+                                            def_levels_0005.push(2);
+                                            def_levels_0006.push(2);
+                                            def_levels_0007.push(2);
+                                            def_levels_0008.push(2);
+                                            def_levels_0009.push(2);
+                                            def_levels_0010.push(2);
+                                            def_levels_0011.push(2);
+                                            def_levels_0012.push(2);
+                                            def_levels_0013.push(2);
+                                            rep_levels_0013.push(0);
+                                        }
+                                    }
+                                }
+                                None => {
+                                    def_levels_0004.push(1);
+                                    def_levels_0005.push(1);
+                                    def_levels_0006.push(1);
+                                    def_levels_0007.push(1);
+                                    def_levels_0008.push(1);
+                                    def_levels_0009.push(1);
+                                    def_levels_0010.push(1);
+                                    def_levels_0011.push(1);
+                                    def_levels_0012.push(1);
+                                    def_levels_0013.push(1);
+                                    rep_levels_0013.push(0);
+                                }
+                            }
+                        }
+                        None => {
+                            def_levels_0003.push(0);
+                            def_levels_0004.push(0);
+                            def_levels_0005.push(0);
+                            def_levels_0006.push(0);
+                            def_levels_0007.push(0);
+                            def_levels_0008.push(0);
+                            def_levels_0009.push(0);
+                            def_levels_0010.push(0);
+                            def_levels_0011.push(0);
+                            def_levels_0012.push(0);
+                            def_levels_0013.push(0);
+                            rep_levels_0013.push(0);
+                        }
+                    }
+                }
+                {
+                    let mut row_group_writer = file_writer.next_row_group()?;
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "id".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int64Type>()
+                        .write_batch(&values_0000, None, None)?;
+                    column_writer.close()?;
+                    values_0000.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "ts".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int64Type>()
+                        .write_batch(&values_0001, None, None)?;
+                    column_writer.close()?;
+                    values_0001.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "status".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int32Type>()
+                        .write_batch(&values_0002, Some(&def_levels_0002), None)?;
+                    column_writer.close()?;
+                    values_0002.clear();
+                    def_levels_0002.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "screen_name".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::ByteArrayType>()
+                        .write_batch(&values_0003, Some(&def_levels_0003), None)?;
+                    column_writer.close()?;
+                    values_0003.clear();
+                    def_levels_0003.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "name".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::ByteArrayType>()
+                        .write_batch(&values_0004, Some(&def_levels_0004), None)?;
+                    column_writer.close()?;
+                    values_0004.clear();
+                    def_levels_0004.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "created_at".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int64Type>()
+                        .write_batch(&values_0005, Some(&def_levels_0005), None)?;
+                    column_writer.close()?;
+                    values_0005.clear();
+                    def_levels_0005.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "location".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::ByteArrayType>()
+                        .write_batch(&values_0006, Some(&def_levels_0006), None)?;
+                    column_writer.close()?;
+                    values_0006.clear();
+                    def_levels_0006.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "description".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::ByteArrayType>()
+                        .write_batch(&values_0007, Some(&def_levels_0007), None)?;
+                    column_writer.close()?;
+                    values_0007.clear();
+                    def_levels_0007.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "url".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::ByteArrayType>()
+                        .write_batch(&values_0008, Some(&def_levels_0008), None)?;
+                    column_writer.close()?;
+                    values_0008.clear();
+                    def_levels_0008.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "followers_count".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int32Type>()
+                        .write_batch(&values_0009, Some(&def_levels_0009), None)?;
+                    column_writer.close()?;
+                    values_0009.clear();
+                    def_levels_0009.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "friends_count".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int32Type>()
+                        .write_batch(&values_0010, Some(&def_levels_0010), None)?;
+                    column_writer.close()?;
+                    values_0010.clear();
+                    def_levels_0010.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "favourites_count".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int32Type>()
+                        .write_batch(&values_0011, Some(&def_levels_0011), None)?;
+                    column_writer.close()?;
+                    values_0011.clear();
+                    def_levels_0011.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "statuses_count".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::Int32Type>()
+                        .write_batch(&values_0012, Some(&def_levels_0012), None)?;
+                    column_writer.close()?;
+                    values_0012.clear();
+                    def_levels_0012.clear();
+                    let mut column_writer = row_group_writer
+                        .next_column()?
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "element".to_string(),
+                        ))?;
+                    column_writer
+                        .typed::<parquet::data_type::ByteArrayType>()
+                        .write_batch(
+                            &values_0013,
+                            Some(&def_levels_0013),
+                            Some(&rep_levels_0013),
+                        )?;
+                    column_writer.close()?;
+                    values_0013.clear();
+                    def_levels_0013.clear();
+                    rep_levels_0013.clear();
+                    row_group_writer.close()?;
+                }
+            }
+            Ok(file_writer.close()?)
+        }
+    }
+}
+impl TryFrom<parquet::record::Row> for User {
+    type Error = parquetry::error::Error;
+    fn try_from(row: parquet::record::Row) -> Result<Self, parquetry::error::Error> {
+        {
+            let mut fields = row.get_column_iter();
+            let id = match fields
+                .next()
+                .ok_or_else(|| parquetry::error::Error::InvalidField("id".to_string()))?
+                .1
+            {
+                parquet::record::Field::ULong(value) => Ok(*value),
+                _ => Err(parquetry::error::Error::InvalidField("id".to_string())),
+            }?;
+            let ts = match fields
+                .next()
+                .ok_or_else(|| parquetry::error::Error::InvalidField("ts".to_string()))?
+                .1
+            {
+                parquet::record::Field::TimestampMillis(value) => {
+                    Ok(
+                        chrono::TimeZone::timestamp_millis_opt(&chrono::Utc, *value)
+                            .single()
+                            .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                "value".to_string(),
+                            ))?,
+                    )
+                }
+                _ => Err(parquetry::error::Error::InvalidField("ts".to_string())),
+            }?;
+            let status = match fields
+                .next()
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "status".to_string(),
+                ))?
+                .1
+            {
+                parquet::record::Field::Null => Ok(None),
+                parquet::record::Field::Int(value) => Ok(Some(*value)),
+                _ => Err(parquetry::error::Error::InvalidField("status".to_string())),
+            }?;
+            let user_info = match fields
+                .next()
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "user_info".to_string(),
+                ))?
+                .1
+            {
+                parquet::record::Field::Null => Ok(None),
+                parquet::record::Field::Group(row) => {
+                    let mut fields = row.get_column_iter();
+                    let screen_name = match fields
+                        .next()
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "screen_name".to_string(),
+                        ))?
+                        .1
+                    {
+                        parquet::record::Field::Str(value) => Ok(value.clone()),
+                        _ => {
+                            Err(
+                                parquetry::error::Error::InvalidField(
+                                    "screen_name".to_string(),
+                                ),
+                            )
+                        }
+                    }?;
+                    let user_name_info = match fields
+                        .next()
+                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                            "user_name_info".to_string(),
+                        ))?
+                        .1
+                    {
+                        parquet::record::Field::Null => Ok(None),
+                        parquet::record::Field::Group(row) => {
+                            let mut fields = row.get_column_iter();
+                            let name = match fields
+                                .next()
+                                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                    "name".to_string(),
+                                ))?
+                                .1
+                            {
+                                parquet::record::Field::Str(value) => Ok(value.clone()),
+                                _ => {
+                                    Err(
+                                        parquetry::error::Error::InvalidField("name".to_string()),
+                                    )
+                                }
+                            }?;
+                            let user_profile_info = match fields
+                                .next()
+                                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                    "user_profile_info".to_string(),
+                                ))?
+                                .1
+                            {
+                                parquet::record::Field::Null => Ok(None),
+                                parquet::record::Field::Group(row) => {
+                                    let mut fields = row.get_column_iter();
+                                    let created_at = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "created_at".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::TimestampMillis(value) => {
+                                            Ok(
+                                                chrono::TimeZone::timestamp_millis_opt(&chrono::Utc, *value)
+                                                    .single()
+                                                    .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                                        "value".to_string(),
+                                                    ))?,
+                                            )
+                                        }
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "created_at".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let location = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "location".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Str(value) => Ok(value.clone()),
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "location".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let description = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "description".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Str(value) => Ok(value.clone()),
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "description".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let url = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "url".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Null => Ok(None),
+                                        parquet::record::Field::Str(value) => {
+                                            Ok(Some(value.clone()))
+                                        }
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField("url".to_string()),
+                                            )
+                                        }
+                                    }?;
+                                    let followers_count = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "followers_count".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Int(value) => Ok(*value),
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "followers_count".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let friends_count = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "friends_count".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Int(value) => Ok(*value),
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "friends_count".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let favourites_count = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "favourites_count".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Int(value) => Ok(*value),
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "favourites_count".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let statuses_count = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "statuses_count".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Int(value) => Ok(*value),
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "statuses_count".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let withheld_in_countries = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "withheld_in_countries".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Null => Ok(None),
+                                        parquet::record::Field::ListInternal(fields) => {
+                                            let mut values = Vec::with_capacity(fields.len());
+                                            for field in fields.elements() {
+                                                let value = match field {
+                                                    parquet::record::Field::Str(value) => Ok(value.clone()),
+                                                    _ => {
+                                                        Err(
+                                                            parquetry::error::Error::InvalidField(
+                                                                "Vec<String>".to_string(),
+                                                            ),
+                                                        )
+                                                    }
+                                                }?;
+                                                values.push(value);
+                                            }
+                                            Ok(Some(values))
+                                        }
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "withheld_in_countries".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    Ok(
+                                        Some(UserProfileInfo {
+                                            created_at,
+                                            location,
+                                            description,
+                                            url,
+                                            followers_count,
+                                            friends_count,
+                                            favourites_count,
+                                            statuses_count,
+                                            withheld_in_countries,
+                                        }),
+                                    )
+                                }
+                                _ => {
+                                    Err(
+                                        parquetry::error::Error::InvalidField(
+                                            "user_profile_info".to_string(),
+                                        ),
+                                    )
+                                }
+                            }?;
+                            Ok(
+                                Some(UserNameInfo {
+                                    name,
+                                    user_profile_info,
+                                }),
+                            )
+                        }
+                        _ => {
+                            Err(
+                                parquetry::error::Error::InvalidField(
+                                    "user_name_info".to_string(),
+                                ),
+                            )
+                        }
+                    }?;
+                    Ok(
+                        Some(UserInfo {
+                            screen_name,
+                            user_name_info,
+                        }),
+                    )
+                }
+                _ => Err(parquetry::error::Error::InvalidField("user_info".to_string())),
+            }?;
+            Ok(User { id, ts, status, user_info })
+        }
+    }
+}

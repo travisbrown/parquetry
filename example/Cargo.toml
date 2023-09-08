@@ -1,0 +1,15 @@
+[package]
+name = "parquetry-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4"
+cli-helpers = "0.1"
+lazy_static = "1"
+parquet = "46"
+parquetry = { path = "../lib/" }
+thiserror = "1"
+
+[build-dependencies]
+parquetry-gen = { path = "../gen/" }

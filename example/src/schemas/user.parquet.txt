@@ -1,0 +1,31 @@
+message user {
+    required int64 id (integer(64, false));
+    required int64 ts (timestamp(millis, true));
+    optional int32 status;
+
+    optional group user_info {
+        required byte_array screen_name (string);
+
+        optional group user_name_info {
+            required byte_array name (string);
+
+            optional group user_profile_info {
+                required int64 created_at (timestamp(millis, true));
+                required byte_array location (string);
+                required byte_array description (string);
+                optional byte_array url (string);
+
+                required int32 followers_count;
+                required int32 friends_count;
+                required int32 favourites_count;
+                required int32 statuses_count;
+
+                optional group withheld_in_countries (list) {
+                    repeated group list {
+                        required byte_array element (string);
+                    }
+                }
+            }
+        }
+    }
+}

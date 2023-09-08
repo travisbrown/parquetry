@@ -1,0 +1,10 @@
+[package]
+name = "parquetry-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cli-helpers = "0.1"
+parquet = "46"
+parquetry-gen = { path = "../gen/" }
+thiserror = "1"

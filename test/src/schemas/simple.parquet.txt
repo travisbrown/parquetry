@@ -1,0 +1,25 @@
+message simple {
+    required int64 abc (integer(64, false));
+    optional byte_array def (string);
+
+    required group ghi (list) {
+        repeated group list {
+            optional boolean element;
+        }
+    }
+
+    optional group jkl (list) {
+        repeated group list {
+            required boolean element;
+        }
+    }
+
+    required boolean mno;
+    optional int64 pqr (timestamp(millis, true));
+    required int64 stu (timestamp(micros, true));
+    optional double vwx;
+    required float yza;
+
+    required fixed_len_byte_array (20) abcd;
+    optional byte_array efgh;
+}
