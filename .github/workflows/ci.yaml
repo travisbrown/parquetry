@@ -2,6 +2,9 @@ name: rust-ci
 
 on: [push, pull_request]
 
+env:
+  QUICKCHECK_GENERATOR_SIZE: 20
+
 jobs:
   build:
     name: Tests

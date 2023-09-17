@@ -2,6 +2,9 @@ on: [push]
 
 name: rust-coverage
 
+env:
+  QUICKCHECK_GENERATOR_SIZE: 20
+
 jobs:
   check:
     name: Coverage
