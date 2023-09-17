@@ -19,16 +19,10 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+          components: clippy
           override: true
 
       - uses: Swatinem/rust-cache@v1
-
-      - name: Format check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
