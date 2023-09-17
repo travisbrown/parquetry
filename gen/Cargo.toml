@@ -2,6 +2,13 @@
 name = "parquetry-gen"
 version = "0.1.0"
 edition = "2021"
+authors = ["Travis Brown <travisrobertbrown@gmail.com>"]
+homepage = "https://github.com/travisbrown/parquetry"
+repository = "https://github.com/travisbrown/parquetry"
+description = "Parquet code generator"
+keywords = ["parquet"]
+license-file = "../LICENSE"
+readme = "../README.md"
 
 [dependencies]
 chrono = "0.4"
