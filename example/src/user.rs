@@ -35,25 +35,27 @@ lazy_static::lazy_static! {
     std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
     .unwrap());
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct User {
     pub id: u64,
+    #[serde(with = "chrono::serde::ts_milliseconds")]
     pub ts: chrono::DateTime<chrono::Utc>,
     pub status: Option<i32>,
     pub user_info: Option<UserInfo>,
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct UserInfo {
     pub screen_name: String,
     pub user_name_info: Option<UserNameInfo>,
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct UserNameInfo {
     pub name: String,
     pub user_profile_info: Option<UserProfileInfo>,
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct UserProfileInfo {
+    #[serde(with = "chrono::serde::ts_milliseconds")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub location: String,
     pub description: String,
@@ -64,7 +66,7 @@ pub struct UserProfileInfo {
     pub statuses_count: i32,
     pub withheld_in_countries: Option<Vec<String>>,
 }
-mod columns {
+pub mod columns {
     pub const ID: parquetry::ColumnInfo = parquetry::ColumnInfo {
         index: 0,
         path: &["id"],

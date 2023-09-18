@@ -148,9 +148,13 @@ fn schema_to_scope(
         }
 
         for gen_field in fields {
-            gen_struct
+            let field = gen_struct
                 .new_field(&gen_field.name, &gen_field.type_name())
                 .vis("pub");
+
+            if let Some(attributes) = gen_field.attributes {
+                field.annotation(attributes);
+            }
         }
     }
 

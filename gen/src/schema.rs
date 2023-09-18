@@ -16,8 +16,16 @@ pub struct GenConfig {
 
 impl Default for GenConfig {
     fn default() -> Self {
+        let mut derives = vec!["Clone", "Copy", "Debug", "Eq", "PartialEq"];
+
+        #[cfg(feature = "serde")]
+        {
+            derives.push("serde::Deserialize");
+            derives.push("serde::Serialize");
+        }
+
         Self {
-            derives: vec!["Clone", "Copy", "Debug", "Eq", "PartialEq"],
+            derives,
             format: true,
         }
     }
@@ -34,6 +42,7 @@ pub struct GenSchema {
 pub struct GenField {
     pub name: String,
     pub base_type_name: String,
+    pub attributes: Option<String>,
     pub optional: bool,
     pub gen_type: GenType,
 }
@@ -180,11 +189,14 @@ impl GenField {
                         *physical_type,
                         *type_length,
                     )?;
+                    let optional = basic_info.repetition() == Repetition::OPTIONAL;
+
                     Ok((
                         Self {
                             name,
                             base_type_name: mapping.rust_type_name().to_string(),
-                            optional: basic_info.repetition() == Repetition::OPTIONAL,
+                            attributes: mapping.attributes(optional),
+                            optional,
                             gen_type: GenType::Column {
                                 index: current_column_index,
                                 descriptor: column,
@@ -231,6 +243,7 @@ impl GenField {
                         Self {
                             name,
                             base_type_name: format!("Vec<{}>", element_type_name),
+                            attributes: None,
                             optional,
                             gen_type: GenType::List {
                                 def_depth: new_def_depth + 1,
@@ -267,6 +280,7 @@ impl GenField {
                         Self {
                             name,
                             base_type_name: Self::field_type_name(basic_info.name()),
+                            attributes: None,
                             optional,
                             gen_type: GenType::Struct {
                                 gen_fields,

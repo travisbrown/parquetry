@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 lazy_static = "1"
 parquet = "46"
 parquetry = { path = "../lib/" }
+serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 
 [build-dependencies]

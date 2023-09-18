@@ -9,6 +9,7 @@ cli-helpers = "0.1"
 lazy_static = "1"
 parquet = "46"
 parquetry = { path = "../lib/" }
+serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 
 [build-dependencies]

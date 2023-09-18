@@ -75,6 +75,44 @@ impl TypeMapping {
         }
     }
 
+    pub fn attributes(&self, optional: bool) -> Option<String> {
+        match self {
+            Self::DateTime(DateTimeUnit::Millis) => {
+                #[cfg(feature = "serde")]
+                {
+                    if optional {
+                        return Some(
+                            "#[serde(with = \"chrono::serde::ts_milliseconds_option\")]"
+                                .to_string(),
+                        );
+                    } else {
+                        return Some(
+                            "#[serde(with = \"chrono::serde::ts_milliseconds\")]".to_string(),
+                        );
+                    }
+                }
+            }
+            Self::DateTime(DateTimeUnit::Micros) => {
+                #[cfg(feature = "serde")]
+                {
+                    if optional {
+                        return Some(
+                            "#[serde(with = \"chrono::serde::ts_microseconds_option\")]"
+                                .to_string(),
+                        );
+                    } else {
+                        return Some(
+                            "#[serde(with = \"chrono::serde::ts_microseconds\")]".to_string(),
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        None
+    }
+
     pub fn rust_type_name(&self) -> String {
         match self {
             Self::Bool => "bool".to_string(),
