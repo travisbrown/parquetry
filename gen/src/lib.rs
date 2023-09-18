@@ -154,6 +154,8 @@ fn schema_to_scope(
         }
     }
 
+    code::add_column_info_structs(&mut scope, descriptor.columns());
+
     let schema_impl = scope
         .new_impl(&schema.type_name)
         .impl_trait("parquetry::Schema");

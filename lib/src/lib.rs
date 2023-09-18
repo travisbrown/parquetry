@@ -5,13 +5,29 @@ use parquet::{
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
     },
+    format::SortingColumn,
     record::{reader::RowIter, Row},
-    schema::types::TypePtr,
+    schema::types::{ColumnPath, TypePtr},
 };
 
 pub mod error;
 
 use crate::error::Error;
+
+pub struct ColumnInfo {
+    pub index: usize,
+    pub path: &'static [&'static str],
+}
+
+impl ColumnInfo {
+    pub fn path(&self) -> ColumnPath {
+        ColumnPath::new(self.path.iter().map(|part| part.to_string()).collect())
+    }
+
+    pub fn sorting(&self) -> SortingColumn {
+        SortingColumn::new(self.index as i32, false, false)
+    }
+}
 
 pub trait Schema: Sized {
     fn source(&self) -> &str;

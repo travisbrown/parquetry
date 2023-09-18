@@ -64,6 +64,112 @@ pub struct UserProfileInfo {
     pub statuses_count: i32,
     pub withheld_in_countries: Option<Vec<String>>,
 }
+mod columns {
+    pub const ID: parquetry::ColumnInfo = parquetry::ColumnInfo {
+        index: 0,
+        path: &["id"],
+    };
+    pub const TS: parquetry::ColumnInfo = parquetry::ColumnInfo {
+        index: 1,
+        path: &["ts"],
+    };
+    pub const STATUS: parquetry::ColumnInfo = parquetry::ColumnInfo {
+        index: 2,
+        path: &["status"],
+    };
+    pub mod user_info {
+        pub const SCREEN_NAME: parquetry::ColumnInfo = parquetry::ColumnInfo {
+            index: 3,
+            path: &["user_info", "screen_name"],
+        };
+        pub mod user_name_info {
+            pub const NAME: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                index: 4,
+                path: &["user_info", "user_name_info", "name"],
+            };
+            pub mod user_profile_info {
+                pub const CREATED_AT: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 5,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "created_at",
+                    ],
+                };
+                pub const LOCATION: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 6,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "location",
+                    ],
+                };
+                pub const DESCRIPTION: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 7,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "description",
+                    ],
+                };
+                pub const URL: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 8,
+                    path: &["user_info", "user_name_info", "user_profile_info", "url"],
+                };
+                pub const FOLLOWERS_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 9,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "followers_count",
+                    ],
+                };
+                pub const FRIENDS_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 10,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "friends_count",
+                    ],
+                };
+                pub const FAVOURITES_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 11,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "favourites_count",
+                    ],
+                };
+                pub const STATUSES_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 12,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "statuses_count",
+                    ],
+                };
+                pub const WITHHELD_IN_COUNTRIES: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 13,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "withheld_in_countries",
+                        "list",
+                        "element",
+                    ],
+                };
+            }
+        }
+    }
+}
 impl parquetry::Schema for User {
     fn source(&self) -> &str {
         SCHEMA_SOURCE
