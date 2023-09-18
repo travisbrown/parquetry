@@ -158,7 +158,21 @@ fn schema_to_scope(
         }
     }
 
-    code::add_column_info_structs(&mut scope, descriptor.columns());
+    code::add_column_info_modules(&mut scope, descriptor.columns());
+    code::add_workspace_struct(&mut scope, descriptor.columns())?;
+
+    let base_impl = scope.new_impl(&schema.type_name);
+
+    base_impl
+        .new_fn("write_with_workspace")
+        .generic("W: std::io::Write + Send")
+        .arg(
+            "file_writer",
+            "&mut parquet::file::writer::SerializedFileWriter<W>",
+        )
+        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
+        .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
+        .push_block(code::gen_write_with_workspace_block(descriptor.columns())?);
 
     let schema_impl = scope
         .new_impl(&schema.type_name)
@@ -184,7 +198,7 @@ fn schema_to_scope(
         .arg("properties", "parquet::file::properties::WriterProperties")
         .arg("groups", "I")
         .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
-        .push_block(code::gen_write_block(schema, descriptor.columns())?);
+        .push_block(code::gen_write_block(schema)?);
 
     let row_conversion_impl = scope
         .new_impl(&schema.type_name)

@@ -7,6 +7,8 @@ use super::{
     schema::{GenField, GenSchema, GenType},
 };
 
+pub const WORKSPACE_STRUCT_NAME: &str = "ParquetryWorkspace";
+
 pub fn gen_field_writer_code(
     gen_field: &GenField,
     rep_level: Option<usize>,
@@ -67,7 +69,7 @@ fn gen_type_writer_code(
             ..
         } => {
             let assignment = gen_push(
-                values_var_name(*index),
+                format!("workspace.{}", values_var_name(*index)),
                 mapping.physical_type_conversion(name),
             );
 
@@ -77,17 +79,22 @@ fn gen_type_writer_code(
                 code.push(assignment);
                 if descriptor.max_def_level() > 0 {
                     code.push(gen_push(
-                        def_levels_var_name(*index),
+                        format!("workspace.{}", def_levels_var_name(*index)),
                         descriptor.max_def_level(),
                     ))
                 };
             } else {
                 let some_code = vec![
                     assignment,
-                    gen_push(def_levels_var_name(*index), descriptor.max_def_level()),
+                    gen_push(
+                        format!("workspace.{}", def_levels_var_name(*index)),
+                        descriptor.max_def_level(),
+                    ),
                 ];
-                let none_code =
-                    gen_push(def_levels_var_name(*index), descriptor.max_def_level() - 1);
+                let none_code = gen_push(
+                    format!("workspace.{}", def_levels_var_name(*index)),
+                    descriptor.max_def_level() - 1,
+                );
 
                 code.push(gen_option_match(
                     name,
@@ -98,7 +105,10 @@ fn gen_type_writer_code(
             }
 
             if let Some(rep_level) = rep_level {
-                code.push(gen_push(rep_levels_var_name(*index), rep_level));
+                code.push(gen_push(
+                    format!("workspace.{}", rep_levels_var_name(*index)),
+                    rep_level,
+                ));
             }
 
             code
@@ -135,12 +145,15 @@ fn gen_type_writer_code(
                 }
 
                 for index in gen_type.column_indices() {
-                    none_code.push(gen_push(def_levels_var_name(index), def_depth - 1));
+                    none_code.push(gen_push(
+                        format!("workspace.{}", def_levels_var_name(index)),
+                        def_depth - 1,
+                    ));
                 }
 
                 for index in gen_type.repeated_column_indices() {
                     none_code.push(gen_push(
-                        rep_levels_var_name(index),
+                        format!("workspace.{}", rep_levels_var_name(index)),
                         rep_level.unwrap_or(*rep_depth),
                     ));
                 }
@@ -164,12 +177,15 @@ fn gen_type_writer_code(
         } => {
             let mut empty_code = vec![];
             for index in gen_type.column_indices() {
-                empty_code.push(gen_push(def_levels_var_name(index), def_depth - 1));
+                empty_code.push(gen_push(
+                    format!("workspace.{}", def_levels_var_name(index)),
+                    def_depth - 1,
+                ));
             }
 
             for index in gen_type.repeated_column_indices() {
                 empty_code.push(gen_push(
-                    rep_levels_var_name(index),
+                    format!("workspace.{}", rep_levels_var_name(index)),
                     rep_level.unwrap_or(rep_depth - 1),
                 ));
             }
@@ -207,12 +223,15 @@ fn gen_type_writer_code(
             } else {
                 let mut none_code = vec![];
                 for index in gen_type.column_indices() {
-                    none_code.push(gen_push(def_levels_var_name(index), def_depth - 2));
+                    none_code.push(gen_push(
+                        format!("workspace.{}", def_levels_var_name(index)),
+                        def_depth - 2,
+                    ));
                 }
 
                 for index in gen_type.repeated_column_indices() {
                     none_code.push(gen_push(
-                        rep_levels_var_name(index),
+                        format!("workspace.{}", rep_levels_var_name(index)),
                         rep_level.unwrap_or(rep_depth - 1),
                     ));
                 }
@@ -368,23 +387,15 @@ fn gen_row_conversion_assignments(
     Ok(lines)
 }
 
-pub fn gen_write_block(gen_schema: &GenSchema, columns: &[ColumnDescPtr]) -> Result<Block, Error> {
+pub fn gen_write_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line("let mut file_writer = ");
     block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.clone(), std::sync::Arc::new(properties))?;");
-
-    for (index, column) in columns.iter().enumerate() {
-        block.line(format!("let mut {} = vec![];", values_var_name(index)));
-
-        if column.max_def_level() > 0 {
-            block.line(format!("let mut {} = vec![];", def_levels_var_name(index)));
-        }
-
-        if column.max_rep_level() > 0 {
-            block.line(format!("let mut {} = vec![];", rep_levels_var_name(index)));
-        }
-    }
+    block.line(format!(
+        "let mut workspace = {}::default();",
+        WORKSPACE_STRUCT_NAME
+    ));
 
     block.line("for group in groups {");
 
@@ -402,7 +413,7 @@ pub fn gen_write_block(gen_schema: &GenSchema, columns: &[ColumnDescPtr]) -> Res
 
     block.line("}");
 
-    block.push_block(gen_row_group_write_block(columns)?);
+    block.line("Self::write_with_workspace(&mut file_writer, &mut workspace)?;");
 
     block.line("}");
     block.line("Ok(file_writer.close()?)");
@@ -410,7 +421,7 @@ pub fn gen_write_block(gen_schema: &GenSchema, columns: &[ColumnDescPtr]) -> Res
     Ok(block)
 }
 
-fn gen_row_group_write_block(columns: &[ColumnDescPtr]) -> Result<Block, Error> {
+pub fn gen_write_with_workspace_block(columns: &[ColumnDescPtr]) -> Result<Block, Error> {
     let mut block = Block::new("");
     block.line("let mut row_group_writer = file_writer.next_row_group()?;");
 
@@ -422,35 +433,26 @@ fn gen_row_group_write_block(columns: &[ColumnDescPtr]) -> Result<Block, Error> 
             physical_type_name(column.physical_type())?
         ));
 
-        block.line(format!("&{},", values_var_name(index)));
+        block.line(format!("&workspace.{},", values_var_name(index)));
 
         if column.max_def_level() > 0 {
-            block.line(format!("Some(&{}),", def_levels_var_name(index)));
+            block.line(format!("Some(&workspace.{}),", def_levels_var_name(index)));
         } else {
             block.line("None,");
         }
 
         if column.max_rep_level() > 0 {
-            block.line(format!("Some(&{}),", rep_levels_var_name(index)));
+            block.line(format!("Some(&workspace.{}),", rep_levels_var_name(index)));
         } else {
             block.line("None,");
         }
 
         block.line(")?;");
         block.line("column_writer.close()?;");
-
-        block.line(format!("{}.clear();", values_var_name(index)));
-
-        if column.max_def_level() > 0 {
-            block.line(format!("{}.clear();", def_levels_var_name(index)));
-        }
-
-        if column.max_rep_level() > 0 {
-            block.line(format!("{}.clear();", rep_levels_var_name(index)));
-        }
     }
 
-    block.line("row_group_writer.close()?;");
+    block.line("workspace.clear();");
+    block.line("Ok(row_group_writer.close()?)");
 
     Ok(block)
 }
@@ -537,7 +539,7 @@ impl ColumnInfoBranch {
     }
 }
 
-pub fn add_column_info_structs(scope: &mut Scope, columns: &[ColumnDescPtr]) {
+pub fn add_column_info_modules(scope: &mut Scope, columns: &[ColumnDescPtr]) {
     let mut root = ColumnInfoBranch(vec![]);
 
     for (index, column) in columns.iter().enumerate() {
@@ -551,6 +553,48 @@ pub fn add_column_info_structs(scope: &mut Scope, columns: &[ColumnDescPtr]) {
     }
 }
 
+pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Result<(), Error> {
+    let workspace = scope.new_struct(WORKSPACE_STRUCT_NAME);
+    let mut clear_code = vec![];
+
+    workspace.derive("Default");
+
+    for (index, column) in columns.iter().enumerate() {
+        let values_name = values_var_name(index);
+        workspace.new_field(
+            &values_name,
+            format!(
+                "Vec<{}>",
+                physical_type_rust_type_name(column.physical_type())?
+            ),
+        );
+        clear_code.push(format!("self.{}.clear();", values_name));
+
+        if column.max_def_level() > 0 {
+            let def_levels_name = def_levels_var_name(index);
+            workspace.new_field(&def_levels_name, "Vec<i16>");
+            clear_code.push(format!("self.{}.clear();", def_levels_name));
+        }
+
+        if column.max_rep_level() > 0 {
+            let rep_levels_name = rep_levels_var_name(index);
+            workspace.new_field(&rep_levels_name, "Vec<i16>");
+            clear_code.push(format!("self.{}.clear();", rep_levels_name));
+        }
+    }
+
+    let workspace_impl = scope
+        .new_impl(WORKSPACE_STRUCT_NAME)
+        .new_fn("clear")
+        .arg_mut_self();
+
+    for line in clear_code {
+        workspace_impl.line(line);
+    }
+
+    Ok(())
+}
+
 fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
     match t {
         PhysicalType::BOOLEAN => Ok("BoolType"),
@@ -560,6 +604,19 @@ fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
         PhysicalType::DOUBLE => Ok("DoubleType"),
         PhysicalType::BYTE_ARRAY => Ok("ByteArrayType"),
         PhysicalType::FIXED_LEN_BYTE_ARRAY => Ok("FixedLenByteArrayType"),
+        PhysicalType::INT96 => Err(Error::UnsupportedPhysicalType(PhysicalType::INT96)),
+    }
+}
+
+fn physical_type_rust_type_name(t: PhysicalType) -> Result<&'static str, Error> {
+    match t {
+        PhysicalType::BOOLEAN => Ok("bool"),
+        PhysicalType::INT32 => Ok("i32"),
+        PhysicalType::INT64 => Ok("i64"),
+        PhysicalType::FLOAT => Ok("f32"),
+        PhysicalType::DOUBLE => Ok("f64"),
+        PhysicalType::BYTE_ARRAY => Ok("parquet::data_type::ByteArray"),
+        PhysicalType::FIXED_LEN_BYTE_ARRAY => Ok("parquet::data_type::FixedLenByteArray"),
         PhysicalType::INT96 => Err(Error::UnsupportedPhysicalType(PhysicalType::INT96)),
     }
 }

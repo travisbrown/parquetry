@@ -172,6 +172,249 @@ pub mod columns {
         }
     }
 }
+#[derive(Default)]
+struct ParquetryWorkspace {
+    values_0000: Vec<i64>,
+    values_0001: Vec<i64>,
+    values_0002: Vec<i32>,
+    def_levels_0002: Vec<i16>,
+    values_0003: Vec<parquet::data_type::ByteArray>,
+    def_levels_0003: Vec<i16>,
+    values_0004: Vec<parquet::data_type::ByteArray>,
+    def_levels_0004: Vec<i16>,
+    values_0005: Vec<i64>,
+    def_levels_0005: Vec<i16>,
+    values_0006: Vec<parquet::data_type::ByteArray>,
+    def_levels_0006: Vec<i16>,
+    values_0007: Vec<parquet::data_type::ByteArray>,
+    def_levels_0007: Vec<i16>,
+    values_0008: Vec<parquet::data_type::ByteArray>,
+    def_levels_0008: Vec<i16>,
+    values_0009: Vec<i32>,
+    def_levels_0009: Vec<i16>,
+    values_0010: Vec<i32>,
+    def_levels_0010: Vec<i16>,
+    values_0011: Vec<i32>,
+    def_levels_0011: Vec<i16>,
+    values_0012: Vec<i32>,
+    def_levels_0012: Vec<i16>,
+    values_0013: Vec<parquet::data_type::ByteArray>,
+    def_levels_0013: Vec<i16>,
+    rep_levels_0013: Vec<i16>,
+}
+impl ParquetryWorkspace {
+    fn clear(&mut self) {
+        self.values_0000.clear();
+        self.values_0001.clear();
+        self.values_0002.clear();
+        self.def_levels_0002.clear();
+        self.values_0003.clear();
+        self.def_levels_0003.clear();
+        self.values_0004.clear();
+        self.def_levels_0004.clear();
+        self.values_0005.clear();
+        self.def_levels_0005.clear();
+        self.values_0006.clear();
+        self.def_levels_0006.clear();
+        self.values_0007.clear();
+        self.def_levels_0007.clear();
+        self.values_0008.clear();
+        self.def_levels_0008.clear();
+        self.values_0009.clear();
+        self.def_levels_0009.clear();
+        self.values_0010.clear();
+        self.def_levels_0010.clear();
+        self.values_0011.clear();
+        self.def_levels_0011.clear();
+        self.values_0012.clear();
+        self.def_levels_0012.clear();
+        self.values_0013.clear();
+        self.def_levels_0013.clear();
+        self.rep_levels_0013.clear();
+    }
+}
+impl User {
+    fn write_with_workspace<W: std::io::Write + Send>(
+        file_writer: &mut parquet::file::writer::SerializedFileWriter<W>,
+        workspace: &mut ParquetryWorkspace,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
+        {
+            let mut row_group_writer = file_writer.next_row_group()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField("id".to_string()))?;
+            column_writer
+                .typed::<parquet::data_type::Int64Type>()
+                .write_batch(&workspace.values_0000, None, None)?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField("ts".to_string()))?;
+            column_writer
+                .typed::<parquet::data_type::Int64Type>()
+                .write_batch(&workspace.values_0001, None, None)?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "status".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0002,
+                    Some(&workspace.def_levels_0002),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "screen_name".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0003,
+                    Some(&workspace.def_levels_0003),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "name".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0004,
+                    Some(&workspace.def_levels_0004),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "created_at".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int64Type>()
+                .write_batch(
+                    &workspace.values_0005,
+                    Some(&workspace.def_levels_0005),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "location".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0006,
+                    Some(&workspace.def_levels_0006),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "description".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0007,
+                    Some(&workspace.def_levels_0007),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "url".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0008,
+                    Some(&workspace.def_levels_0008),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "followers_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0009,
+                    Some(&workspace.def_levels_0009),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "friends_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0010,
+                    Some(&workspace.def_levels_0010),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "favourites_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0011,
+                    Some(&workspace.def_levels_0011),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "statuses_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0012,
+                    Some(&workspace.def_levels_0012),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "element".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0013,
+                    Some(&workspace.def_levels_0013),
+                    Some(&workspace.rep_levels_0013),
+                )?;
+            column_writer.close()?;
+            workspace.clear();
+            Ok(row_group_writer.close()?)
+        }
+    }
+}
 impl parquetry::Schema for User {
     fn source(&self) -> &str {
         SCHEMA_SOURCE
@@ -190,54 +433,28 @@ impl parquetry::Schema for User {
                 SCHEMA.clone(),
                 std::sync::Arc::new(properties),
             )?;
-            let mut values_0000 = vec![];
-            let mut values_0001 = vec![];
-            let mut values_0002 = vec![];
-            let mut def_levels_0002 = vec![];
-            let mut values_0003 = vec![];
-            let mut def_levels_0003 = vec![];
-            let mut values_0004 = vec![];
-            let mut def_levels_0004 = vec![];
-            let mut values_0005 = vec![];
-            let mut def_levels_0005 = vec![];
-            let mut values_0006 = vec![];
-            let mut def_levels_0006 = vec![];
-            let mut values_0007 = vec![];
-            let mut def_levels_0007 = vec![];
-            let mut values_0008 = vec![];
-            let mut def_levels_0008 = vec![];
-            let mut values_0009 = vec![];
-            let mut def_levels_0009 = vec![];
-            let mut values_0010 = vec![];
-            let mut def_levels_0010 = vec![];
-            let mut values_0011 = vec![];
-            let mut def_levels_0011 = vec![];
-            let mut values_0012 = vec![];
-            let mut def_levels_0012 = vec![];
-            let mut values_0013 = vec![];
-            let mut def_levels_0013 = vec![];
-            let mut rep_levels_0013 = vec![];
+            let mut workspace = ParquetryWorkspace::default();
             for group in groups {
                 for User { id, ts, status, user_info } in &group {
-                    values_0000.push(*id as i64);
-                    values_0001.push(ts.timestamp_millis());
+                    workspace.values_0000.push(*id as i64);
+                    workspace.values_0001.push(ts.timestamp_millis());
                     match status {
                         Some(status) => {
-                            values_0002.push(*status);
-                            def_levels_0002.push(1);
+                            workspace.values_0002.push(*status);
+                            workspace.def_levels_0002.push(1);
                         }
                         None => {
-                            def_levels_0002.push(0);
+                            workspace.def_levels_0002.push(0);
                         }
                     }
                     match user_info {
                         Some(UserInfo { screen_name, user_name_info }) => {
-                            values_0003.push(screen_name.as_str().into());
-                            def_levels_0003.push(1);
+                            workspace.values_0003.push(screen_name.as_str().into());
+                            workspace.def_levels_0003.push(1);
                             match user_name_info {
                                 Some(UserNameInfo { name, user_profile_info }) => {
-                                    values_0004.push(name.as_str().into());
-                                    def_levels_0004.push(2);
+                                    workspace.values_0004.push(name.as_str().into());
+                                    workspace.def_levels_0004.push(2);
                                     match user_profile_info {
                                         Some(
                                             UserProfileInfo {
@@ -252,262 +469,102 @@ impl parquetry::Schema for User {
                                                 withheld_in_countries,
                                             },
                                         ) => {
-                                            values_0005.push(created_at.timestamp_millis());
-                                            def_levels_0005.push(3);
-                                            values_0006.push(location.as_str().into());
-                                            def_levels_0006.push(3);
-                                            values_0007.push(description.as_str().into());
-                                            def_levels_0007.push(3);
+                                            workspace.values_0005.push(created_at.timestamp_millis());
+                                            workspace.def_levels_0005.push(3);
+                                            workspace.values_0006.push(location.as_str().into());
+                                            workspace.def_levels_0006.push(3);
+                                            workspace.values_0007.push(description.as_str().into());
+                                            workspace.def_levels_0007.push(3);
                                             match url {
                                                 Some(url) => {
-                                                    values_0008.push(url.as_str().into());
-                                                    def_levels_0008.push(4);
+                                                    workspace.values_0008.push(url.as_str().into());
+                                                    workspace.def_levels_0008.push(4);
                                                 }
                                                 None => {
-                                                    def_levels_0008.push(3);
+                                                    workspace.def_levels_0008.push(3);
                                                 }
                                             }
-                                            values_0009.push(*followers_count);
-                                            def_levels_0009.push(3);
-                                            values_0010.push(*friends_count);
-                                            def_levels_0010.push(3);
-                                            values_0011.push(*favourites_count);
-                                            def_levels_0011.push(3);
-                                            values_0012.push(*statuses_count);
-                                            def_levels_0012.push(3);
+                                            workspace.values_0009.push(*followers_count);
+                                            workspace.def_levels_0009.push(3);
+                                            workspace.values_0010.push(*friends_count);
+                                            workspace.def_levels_0010.push(3);
+                                            workspace.values_0011.push(*favourites_count);
+                                            workspace.def_levels_0011.push(3);
+                                            workspace.values_0012.push(*statuses_count);
+                                            workspace.def_levels_0012.push(3);
                                             match withheld_in_countries {
                                                 Some(withheld_in_countries) => {
                                                     if withheld_in_countries.is_empty() {
-                                                        def_levels_0013.push(4);
-                                                        rep_levels_0013.push(0);
+                                                        workspace.def_levels_0013.push(4);
+                                                        workspace.rep_levels_0013.push(0);
                                                     } else {
                                                         let mut first = true;
                                                         for element in withheld_in_countries {
                                                             if first {
-                                                                values_0013.push(element.as_str().into());
-                                                                def_levels_0013.push(5);
-                                                                rep_levels_0013.push(0);
+                                                                workspace.values_0013.push(element.as_str().into());
+                                                                workspace.def_levels_0013.push(5);
+                                                                workspace.rep_levels_0013.push(0);
                                                                 first = false;
                                                             } else {
-                                                                values_0013.push(element.as_str().into());
-                                                                def_levels_0013.push(5);
-                                                                rep_levels_0013.push(1);
+                                                                workspace.values_0013.push(element.as_str().into());
+                                                                workspace.def_levels_0013.push(5);
+                                                                workspace.rep_levels_0013.push(1);
                                                             }
                                                         }
                                                     }
                                                 }
                                                 None => {
-                                                    def_levels_0013.push(3);
-                                                    rep_levels_0013.push(0);
+                                                    workspace.def_levels_0013.push(3);
+                                                    workspace.rep_levels_0013.push(0);
                                                 }
                                             }
                                         }
                                         None => {
-                                            def_levels_0005.push(2);
-                                            def_levels_0006.push(2);
-                                            def_levels_0007.push(2);
-                                            def_levels_0008.push(2);
-                                            def_levels_0009.push(2);
-                                            def_levels_0010.push(2);
-                                            def_levels_0011.push(2);
-                                            def_levels_0012.push(2);
-                                            def_levels_0013.push(2);
-                                            rep_levels_0013.push(0);
+                                            workspace.def_levels_0005.push(2);
+                                            workspace.def_levels_0006.push(2);
+                                            workspace.def_levels_0007.push(2);
+                                            workspace.def_levels_0008.push(2);
+                                            workspace.def_levels_0009.push(2);
+                                            workspace.def_levels_0010.push(2);
+                                            workspace.def_levels_0011.push(2);
+                                            workspace.def_levels_0012.push(2);
+                                            workspace.def_levels_0013.push(2);
+                                            workspace.rep_levels_0013.push(0);
                                         }
                                     }
                                 }
                                 None => {
-                                    def_levels_0004.push(1);
-                                    def_levels_0005.push(1);
-                                    def_levels_0006.push(1);
-                                    def_levels_0007.push(1);
-                                    def_levels_0008.push(1);
-                                    def_levels_0009.push(1);
-                                    def_levels_0010.push(1);
-                                    def_levels_0011.push(1);
-                                    def_levels_0012.push(1);
-                                    def_levels_0013.push(1);
-                                    rep_levels_0013.push(0);
+                                    workspace.def_levels_0004.push(1);
+                                    workspace.def_levels_0005.push(1);
+                                    workspace.def_levels_0006.push(1);
+                                    workspace.def_levels_0007.push(1);
+                                    workspace.def_levels_0008.push(1);
+                                    workspace.def_levels_0009.push(1);
+                                    workspace.def_levels_0010.push(1);
+                                    workspace.def_levels_0011.push(1);
+                                    workspace.def_levels_0012.push(1);
+                                    workspace.def_levels_0013.push(1);
+                                    workspace.rep_levels_0013.push(0);
                                 }
                             }
                         }
                         None => {
-                            def_levels_0003.push(0);
-                            def_levels_0004.push(0);
-                            def_levels_0005.push(0);
-                            def_levels_0006.push(0);
-                            def_levels_0007.push(0);
-                            def_levels_0008.push(0);
-                            def_levels_0009.push(0);
-                            def_levels_0010.push(0);
-                            def_levels_0011.push(0);
-                            def_levels_0012.push(0);
-                            def_levels_0013.push(0);
-                            rep_levels_0013.push(0);
+                            workspace.def_levels_0003.push(0);
+                            workspace.def_levels_0004.push(0);
+                            workspace.def_levels_0005.push(0);
+                            workspace.def_levels_0006.push(0);
+                            workspace.def_levels_0007.push(0);
+                            workspace.def_levels_0008.push(0);
+                            workspace.def_levels_0009.push(0);
+                            workspace.def_levels_0010.push(0);
+                            workspace.def_levels_0011.push(0);
+                            workspace.def_levels_0012.push(0);
+                            workspace.def_levels_0013.push(0);
+                            workspace.rep_levels_0013.push(0);
                         }
                     }
                 }
-                {
-                    let mut row_group_writer = file_writer.next_row_group()?;
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "id".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int64Type>()
-                        .write_batch(&values_0000, None, None)?;
-                    column_writer.close()?;
-                    values_0000.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "ts".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int64Type>()
-                        .write_batch(&values_0001, None, None)?;
-                    column_writer.close()?;
-                    values_0001.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "status".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int32Type>()
-                        .write_batch(&values_0002, Some(&def_levels_0002), None)?;
-                    column_writer.close()?;
-                    values_0002.clear();
-                    def_levels_0002.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "screen_name".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::ByteArrayType>()
-                        .write_batch(&values_0003, Some(&def_levels_0003), None)?;
-                    column_writer.close()?;
-                    values_0003.clear();
-                    def_levels_0003.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "name".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::ByteArrayType>()
-                        .write_batch(&values_0004, Some(&def_levels_0004), None)?;
-                    column_writer.close()?;
-                    values_0004.clear();
-                    def_levels_0004.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "created_at".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int64Type>()
-                        .write_batch(&values_0005, Some(&def_levels_0005), None)?;
-                    column_writer.close()?;
-                    values_0005.clear();
-                    def_levels_0005.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "location".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::ByteArrayType>()
-                        .write_batch(&values_0006, Some(&def_levels_0006), None)?;
-                    column_writer.close()?;
-                    values_0006.clear();
-                    def_levels_0006.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "description".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::ByteArrayType>()
-                        .write_batch(&values_0007, Some(&def_levels_0007), None)?;
-                    column_writer.close()?;
-                    values_0007.clear();
-                    def_levels_0007.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "url".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::ByteArrayType>()
-                        .write_batch(&values_0008, Some(&def_levels_0008), None)?;
-                    column_writer.close()?;
-                    values_0008.clear();
-                    def_levels_0008.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "followers_count".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int32Type>()
-                        .write_batch(&values_0009, Some(&def_levels_0009), None)?;
-                    column_writer.close()?;
-                    values_0009.clear();
-                    def_levels_0009.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "friends_count".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int32Type>()
-                        .write_batch(&values_0010, Some(&def_levels_0010), None)?;
-                    column_writer.close()?;
-                    values_0010.clear();
-                    def_levels_0010.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "favourites_count".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int32Type>()
-                        .write_batch(&values_0011, Some(&def_levels_0011), None)?;
-                    column_writer.close()?;
-                    values_0011.clear();
-                    def_levels_0011.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "statuses_count".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::Int32Type>()
-                        .write_batch(&values_0012, Some(&def_levels_0012), None)?;
-                    column_writer.close()?;
-                    values_0012.clear();
-                    def_levels_0012.clear();
-                    let mut column_writer = row_group_writer
-                        .next_column()?
-                        .ok_or_else(|| parquetry::error::Error::InvalidField(
-                            "element".to_string(),
-                        ))?;
-                    column_writer
-                        .typed::<parquet::data_type::ByteArrayType>()
-                        .write_batch(
-                            &values_0013,
-                            Some(&def_levels_0013),
-                            Some(&rep_levels_0013),
-                        )?;
-                    column_writer.close()?;
-                    values_0013.clear();
-                    def_levels_0013.clear();
-                    rep_levels_0013.clear();
-                    row_group_writer.close()?;
-                }
+                Self::write_with_workspace(&mut file_writer, &mut workspace)?;
             }
             Ok(file_writer.close()?)
         }
