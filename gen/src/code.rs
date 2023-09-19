@@ -387,7 +387,7 @@ fn gen_row_conversion_assignments(
     Ok(lines)
 }
 
-pub fn gen_write_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+pub fn gen_write_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line("let mut file_writer = ");
@@ -398,21 +398,7 @@ pub fn gen_write_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     ));
 
     block.line("for group in groups {");
-
-    block.line(format!(
-        "for {} {{ {} }} in &group {{",
-        gen_schema.type_name,
-        gen_schema.field_names().join(", ")
-    ));
-
-    for gen_field in &gen_schema.gen_fields {
-        for line in gen_field_writer_code(gen_field, None)? {
-            block.line(line);
-        }
-    }
-
-    block.line("}");
-
+    block.line("Self::fill_workspace(&mut workspace, &group)?;");
     block.line("Self::write_with_workspace(&mut file_writer, &mut workspace)?;");
     block.line("}");
     block.line("Ok(file_writer.close()?)");
@@ -420,13 +406,23 @@ pub fn gen_write_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     Ok(block)
 }
 
-pub fn gen_write_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+pub fn gen_write_group_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line(format!(
         "let mut workspace = {}::default();",
         WORKSPACE_STRUCT_NAME
     ));
+
+    block.line("Self::fill_workspace(&mut workspace, &group)?;");
+    block.line("Ok(Self::write_with_workspace(file_writer, &mut workspace)?)");
+
+    Ok(block)
+}
+
+pub fn gen_fill_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+    let mut block = Block::new("");
+    block.line("let mut written_count_ = 0;");
 
     block.line(format!(
         "for {} {{ {} }} in group {{",
@@ -439,9 +435,10 @@ pub fn gen_write_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
             block.line(line);
         }
     }
+    block.line("written_count_ += 1;");
     block.line("}");
 
-    block.line("Ok(Self::write_with_workspace(file_writer, &mut workspace)?)");
+    block.line("Ok(written_count_)");
 
     Ok(block)
 }

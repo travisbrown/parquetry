@@ -174,6 +174,13 @@ fn schema_to_scope(
         .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
         .push_block(code::gen_write_with_workspace_block(descriptor.columns())?);
 
+    base_impl
+        .new_fn("fill_workspace")
+        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
+        .arg("group", "&[Self]")
+        .ret("Result<usize, parquetry::error::Error>")
+        .push_block(code::gen_fill_workspace_block(schema)?);
+
     let schema_impl = scope
         .new_impl(&schema.type_name)
         .impl_trait("parquetry::Schema");
@@ -198,7 +205,7 @@ fn schema_to_scope(
         .arg("properties", "parquet::file::properties::WriterProperties")
         .arg("groups", "I")
         .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
-        .push_block(code::gen_write_block(schema)?);
+        .push_block(code::gen_write_block()?);
 
     schema_impl
         .new_fn("write_group")
@@ -209,7 +216,7 @@ fn schema_to_scope(
         )
         .arg("group", "&[Self]")
         .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
-        .push_block(code::gen_write_group_block(schema)?);
+        .push_block(code::gen_write_group_block()?);
 
     let row_conversion_impl = scope
         .new_impl(&schema.type_name)
