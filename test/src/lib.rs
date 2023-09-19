@@ -122,6 +122,34 @@ mod tests {
         }
     }
 
+    quickcheck! {
+        fn nested_write_group_round_trip(groups: Vec<Vec<NestedWrapper>>) -> bool {
+            let groups: Vec<Vec<nested::Nested>> =
+                groups.into_iter().map(|values| values.into_iter().map(|value| value.0).collect()).collect();
+
+            let test_dir = tempdir::TempDir::new("nested-group-write-test-data").unwrap();
+            let test_file_path = test_dir.path().join("nested.parquet");
+            let test_file = File::create(&test_file_path).unwrap();
+
+            let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
+                test_file,
+                nested::Nested::schema(),
+                Default::default(),
+            ).unwrap();
+
+            for group in &groups {
+                nested::Nested::write_group(&mut file_writer, group).unwrap();
+            }
+            file_writer.close().unwrap();
+
+            let read_file = File::open(test_file_path).unwrap();
+            let read_options = ReadOptionsBuilder::new().build();
+            let read_values = nested::Nested::read(read_file, read_options).collect::<Result<Vec<_>, _>>().unwrap();
+
+            read_values == groups.into_iter().flatten().collect::<Vec<_>>()
+        }
+    }
+
     #[derive(Clone, Debug, PartialEq)]
     pub struct SimpleWrapper(simple::Simple);
 
