@@ -31,8 +31,8 @@ impl ColumnInfo {
 }
 
 pub trait Schema: Sized {
-    fn source(&self) -> &str;
-    fn schema(&self) -> TypePtr;
+    fn source() -> &'static str;
+    fn schema() -> TypePtr;
 
     fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> SchemaIter<Self> {
         match SerializedFileReader::new_with_options(reader, options) {

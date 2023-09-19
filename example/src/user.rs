@@ -555,10 +555,10 @@ impl User {
     }
 }
 impl parquetry::Schema for User {
-    fn source(&self) -> &str {
+    fn source() -> &'static str {
         SCHEMA_SOURCE
     }
-    fn schema(&self) -> parquet::schema::types::TypePtr {
+    fn schema() -> parquet::schema::types::TypePtr {
         SCHEMA.clone()
     }
     fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(

@@ -187,13 +187,11 @@ fn schema_to_scope(
 
     schema_impl
         .new_fn("source")
-        .arg_ref_self()
-        .ret("&str")
+        .ret("&'static str")
         .line("SCHEMA_SOURCE");
 
     schema_impl
         .new_fn("schema")
-        .arg_ref_self()
         .ret("parquet::schema::types::TypePtr")
         .line("SCHEMA.clone()");
 
