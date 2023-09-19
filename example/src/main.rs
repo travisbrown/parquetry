@@ -5,6 +5,7 @@ use parquetry::Schema;
 use std::fs::File;
 use std::path::PathBuf;
 
+#[allow(dead_code)]
 mod user;
 use user::*;
 

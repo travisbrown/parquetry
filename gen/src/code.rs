@@ -414,8 +414,8 @@ pub fn gen_write_group_block() -> Result<Block, Error> {
         WORKSPACE_STRUCT_NAME
     ));
 
-    block.line("Self::fill_workspace(&mut workspace, &group)?;");
-    block.line("Ok(Self::write_with_workspace(file_writer, &mut workspace)?)");
+    block.line("Self::fill_workspace(&mut workspace, group)?;");
+    block.line("Self::write_with_workspace(file_writer, &mut workspace)");
 
     Ok(block)
 }

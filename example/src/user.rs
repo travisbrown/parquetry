@@ -586,8 +586,8 @@ impl parquetry::Schema for User {
     ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
         {
             let mut workspace = ParquetryWorkspace::default();
-            Self::fill_workspace(&mut workspace, &group)?;
-            Ok(Self::write_with_workspace(file_writer, &mut workspace)?)
+            Self::fill_workspace(&mut workspace, group)?;
+            Self::write_with_workspace(file_writer, &mut workspace)
         }
     }
 }
