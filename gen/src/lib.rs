@@ -200,6 +200,17 @@ fn schema_to_scope(
         .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
         .push_block(code::gen_write_block(schema)?);
 
+    schema_impl
+        .new_fn("write_group")
+        .generic("W: std::io::Write + Send")
+        .arg(
+            "file_writer",
+            "&mut parquet::file::writer::SerializedFileWriter<W>",
+        )
+        .arg("group", "&[Self]")
+        .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
+        .push_block(code::gen_write_group_block(schema)?);
+
     let row_conversion_impl = scope
         .new_impl(&schema.type_name)
         .impl_trait("TryFrom<parquet::record::Row>")

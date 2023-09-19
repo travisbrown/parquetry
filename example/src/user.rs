@@ -569,6 +569,144 @@ impl parquetry::Schema for User {
             Ok(file_writer.close()?)
         }
     }
+    fn write_group<W: std::io::Write + Send>(
+        file_writer: &mut parquet::file::writer::SerializedFileWriter<W>,
+        group: &[Self],
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
+        {
+            let mut workspace = ParquetryWorkspace::default();
+            for User { id, ts, status, user_info } in group {
+                workspace.values_0000.push(*id as i64);
+                workspace.values_0001.push(ts.timestamp_millis());
+                match status {
+                    Some(status) => {
+                        workspace.values_0002.push(*status);
+                        workspace.def_levels_0002.push(1);
+                    }
+                    None => {
+                        workspace.def_levels_0002.push(0);
+                    }
+                }
+                match user_info {
+                    Some(UserInfo { screen_name, user_name_info }) => {
+                        workspace.values_0003.push(screen_name.as_str().into());
+                        workspace.def_levels_0003.push(1);
+                        match user_name_info {
+                            Some(UserNameInfo { name, user_profile_info }) => {
+                                workspace.values_0004.push(name.as_str().into());
+                                workspace.def_levels_0004.push(2);
+                                match user_profile_info {
+                                    Some(
+                                        UserProfileInfo {
+                                            created_at,
+                                            location,
+                                            description,
+                                            url,
+                                            followers_count,
+                                            friends_count,
+                                            favourites_count,
+                                            statuses_count,
+                                            withheld_in_countries,
+                                        },
+                                    ) => {
+                                        workspace.values_0005.push(created_at.timestamp_millis());
+                                        workspace.def_levels_0005.push(3);
+                                        workspace.values_0006.push(location.as_str().into());
+                                        workspace.def_levels_0006.push(3);
+                                        workspace.values_0007.push(description.as_str().into());
+                                        workspace.def_levels_0007.push(3);
+                                        match url {
+                                            Some(url) => {
+                                                workspace.values_0008.push(url.as_str().into());
+                                                workspace.def_levels_0008.push(4);
+                                            }
+                                            None => {
+                                                workspace.def_levels_0008.push(3);
+                                            }
+                                        }
+                                        workspace.values_0009.push(*followers_count);
+                                        workspace.def_levels_0009.push(3);
+                                        workspace.values_0010.push(*friends_count);
+                                        workspace.def_levels_0010.push(3);
+                                        workspace.values_0011.push(*favourites_count);
+                                        workspace.def_levels_0011.push(3);
+                                        workspace.values_0012.push(*statuses_count);
+                                        workspace.def_levels_0012.push(3);
+                                        match withheld_in_countries {
+                                            Some(withheld_in_countries) => {
+                                                if withheld_in_countries.is_empty() {
+                                                    workspace.def_levels_0013.push(4);
+                                                    workspace.rep_levels_0013.push(0);
+                                                } else {
+                                                    let mut first = true;
+                                                    for element in withheld_in_countries {
+                                                        if first {
+                                                            workspace.values_0013.push(element.as_str().into());
+                                                            workspace.def_levels_0013.push(5);
+                                                            workspace.rep_levels_0013.push(0);
+                                                            first = false;
+                                                        } else {
+                                                            workspace.values_0013.push(element.as_str().into());
+                                                            workspace.def_levels_0013.push(5);
+                                                            workspace.rep_levels_0013.push(1);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            None => {
+                                                workspace.def_levels_0013.push(3);
+                                                workspace.rep_levels_0013.push(0);
+                                            }
+                                        }
+                                    }
+                                    None => {
+                                        workspace.def_levels_0005.push(2);
+                                        workspace.def_levels_0006.push(2);
+                                        workspace.def_levels_0007.push(2);
+                                        workspace.def_levels_0008.push(2);
+                                        workspace.def_levels_0009.push(2);
+                                        workspace.def_levels_0010.push(2);
+                                        workspace.def_levels_0011.push(2);
+                                        workspace.def_levels_0012.push(2);
+                                        workspace.def_levels_0013.push(2);
+                                        workspace.rep_levels_0013.push(0);
+                                    }
+                                }
+                            }
+                            None => {
+                                workspace.def_levels_0004.push(1);
+                                workspace.def_levels_0005.push(1);
+                                workspace.def_levels_0006.push(1);
+                                workspace.def_levels_0007.push(1);
+                                workspace.def_levels_0008.push(1);
+                                workspace.def_levels_0009.push(1);
+                                workspace.def_levels_0010.push(1);
+                                workspace.def_levels_0011.push(1);
+                                workspace.def_levels_0012.push(1);
+                                workspace.def_levels_0013.push(1);
+                                workspace.rep_levels_0013.push(0);
+                            }
+                        }
+                    }
+                    None => {
+                        workspace.def_levels_0003.push(0);
+                        workspace.def_levels_0004.push(0);
+                        workspace.def_levels_0005.push(0);
+                        workspace.def_levels_0006.push(0);
+                        workspace.def_levels_0007.push(0);
+                        workspace.def_levels_0008.push(0);
+                        workspace.def_levels_0009.push(0);
+                        workspace.def_levels_0010.push(0);
+                        workspace.def_levels_0011.push(0);
+                        workspace.def_levels_0012.push(0);
+                        workspace.def_levels_0013.push(0);
+                        workspace.rep_levels_0013.push(0);
+                    }
+                }
+            }
+            Ok(Self::write_with_workspace(file_writer, &mut workspace)?)
+        }
+    }
 }
 impl TryFrom<parquet::record::Row> for User {
     type Error = parquetry::error::Error;

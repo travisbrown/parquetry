@@ -414,9 +414,34 @@ pub fn gen_write_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     block.line("}");
 
     block.line("Self::write_with_workspace(&mut file_writer, &mut workspace)?;");
-
     block.line("}");
     block.line("Ok(file_writer.close()?)");
+
+    Ok(block)
+}
+
+pub fn gen_write_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+    let mut block = Block::new("");
+
+    block.line(format!(
+        "let mut workspace = {}::default();",
+        WORKSPACE_STRUCT_NAME
+    ));
+
+    block.line(format!(
+        "for {} {{ {} }} in group {{",
+        gen_schema.type_name,
+        gen_schema.field_names().join(", ")
+    ));
+
+    for gen_field in &gen_schema.gen_fields {
+        for line in gen_field_writer_code(gen_field, None)? {
+            block.line(line);
+        }
+    }
+    block.line("}");
+
+    block.line("Ok(Self::write_with_workspace(file_writer, &mut workspace)?)");
 
     Ok(block)
 }

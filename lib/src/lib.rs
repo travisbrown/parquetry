@@ -4,6 +4,7 @@ use parquet::{
     file::{
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
+        writer::SerializedFileWriter,
     },
     format::SortingColumn,
     record::{reader::RowIter, Row},
@@ -48,6 +49,11 @@ pub trait Schema: Sized {
         properties: parquet::file::properties::WriterProperties,
         groups: I,
     ) -> Result<parquet::format::FileMetaData, Error>;
+
+    fn write_group<W: std::io::Write + Send>(
+        file_writer: &mut SerializedFileWriter<W>,
+        groups: &[Self],
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>;
 }
 
 pub enum SchemaIter<T> {
