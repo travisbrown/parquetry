@@ -51,28 +51,30 @@ message user {
 The code generator will produce the following Rust structs:
 
 ```rust
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct User {
     pub id: u64,
+    #[serde(with = "chrono::serde::ts_milliseconds")]
     pub ts: chrono::DateTime<chrono::Utc>,
     pub status: Option<i32>,
     pub user_info: Option<UserInfo>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct UserInfo {
     pub screen_name: String,
     pub user_name_info: Option<UserNameInfo>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct UserNameInfo {
     pub name: String,
     pub user_profile_info: Option<UserProfileInfo>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct UserProfileInfo {
+    #[serde(with = "chrono::serde::ts_milliseconds")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub location: String,
     pub description: String,
@@ -90,7 +92,7 @@ It will also generate an instance of the `parquetry::Schema` trait for `User` wi
 ## Usage
 
 The `example` directory provides a fairly minimal example, and the generated code is checked in there.
-In most cases a `build.rs` like thie following should be all you need:
+In most cases a `build.rs` like the following should be all you need:
 
 ```rust
 use std::{fs::File, io::Write};
@@ -112,6 +114,8 @@ fn main() -> Result<(), parquetry_gen::error::Error> {
 
 By default the generated code is formatted with [`prettyplease`][prettyplease] and is annotated to indicate that it should not be formatted by Rustfmt,
 but if you'd prefer to use Rustfmt yourself, you can set `format` to false in the configuration.
+
+The default `serde` feature can be disabled if you don't want the generated code to depend on [Serde][serde].
 
 ## Status and scope
 
@@ -141,6 +145,31 @@ This project differs from [`parquet_derive`][parquet-derive] in a few ways:
 
 In general the two projects have different use cases, and if you just want to store some Rust values in Parquet, I'd recommend choosing `parquet_derive`.
 
+## Warnings
+
+### Name collisions
+
+There's currently no special handling for field names that collide with Rust keywords, names from the standard library, etc.
+Group names should also be unique within a schema.
+The code generator also produces non-public structs with names that could in theory collide with user-generated code.
+
+In most of these cases the problems should be immediately obvious, since the generated code will generally just not compile.
+It wouldn't be hard to check for these collisions and provide better errors, or to allow more user control over naming to avoid these issues,
+but this hasn't been a priority for me.
+
+### Serde instances
+
+By default the generated code will include derived Serde instances for serialization.
+These instances will use the time unit specified by the schema (millisecond or microsecond) for fields with the type `DateTime<Utc>` or `Option<DateTime<Utc>>`, 
+but fields of type `Vec<DateTime<Utc>>` will use the default Serde serialization encoding for `DateTime<Utc>`.
+
+There's no particular reason for this beyond the fact that [`chrono::serde`][chrono-serde] only provides e.g. `ts_milliseconds` and `ts_milliseconds_option` functions,
+and the runtime library could easily provide its own `ts_milliseconds_vec` that would be used in these cases.
+
+### Performance
+
+I haven't made any attempt to optimize the generated code and probably won't until performance becomes an issue for my use cases.
+
 ## License
 
 This software is published under the [Anti-Capitalist Software License][acsl] (v. 1.4).
@@ -149,6 +178,8 @@ This software is published under the [Anti-Capitalist Software License][acsl] (v
 [arrow]: https://arrow.apache.org/
 [arrow-rs]: https://github.com/apache/arrow-rs
 [chrono]: https://docs.rs/chrono/latest/chrono/
+[chrono-serde]: https://docs.rs/chrono/latest/chrono/serde/index.html
 [parquet]: https://parquet.apache.org/
 [parquet-derive]: https://crates.io/crates/parquet_derive
 [prettyplease]: https://github.com/dtolnay/prettyplease
+[serde]: https://serde.rs/
