@@ -5,7 +5,6 @@ use std::{path::Path, sync::Arc};
 
 mod code;
 pub mod error;
-mod names;
 pub mod schema;
 mod types;
 mod util;
