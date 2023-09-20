@@ -6,36 +6,13 @@ use parquet::{
 use std::collections::HashSet;
 use std::ops::Range;
 
-use super::error::Error;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct GenConfig {
-    pub derives: Vec<&'static str>,
-    pub format: bool,
-}
-
-impl Default for GenConfig {
-    fn default() -> Self {
-        let mut derives = vec!["Clone", "Copy", "Debug", "Eq", "PartialEq"];
-
-        #[cfg(feature = "serde")]
-        {
-            derives.push("serde::Deserialize");
-            derives.push("serde::Serialize");
-        }
-
-        Self {
-            derives,
-            format: true,
-        }
-    }
-}
+use super::{error::Error, Config};
 
 #[derive(Clone, Debug)]
 pub struct GenSchema {
     pub type_name: String,
     pub gen_fields: Vec<GenField>,
-    pub gen_config: GenConfig,
+    pub config: Config,
 }
 
 #[derive(Clone, Debug)]
@@ -97,17 +74,17 @@ impl GenStruct {
 }
 
 impl GenSchema {
-    pub fn from_schema(schema: &SchemaDescriptor, gen_config: GenConfig) -> Result<Self, Error> {
+    pub fn from_schema(schema: &SchemaDescriptor, config: Config) -> Result<Self, Error> {
         if let GenField {
             base_type_name,
             gen_type: GenType::Struct { gen_fields, .. },
             ..
-        } = GenField::from_type(schema.root_schema(), schema.columns(), 0, 0, 0)?.0
+        } = GenField::from_type(&config, schema.root_schema(), schema.columns(), 0, 0, 0)?.0
         {
             Ok(Self {
                 type_name: base_type_name,
                 gen_fields,
-                gen_config,
+                config,
             })
         } else {
             Err(Error::InvalidRootSchema(schema.root_schema().clone()))
@@ -131,14 +108,14 @@ impl GenSchema {
         let mut structs = vec![GenStruct::new(
             &self.type_name,
             self.gen_fields.clone(),
-            &self.gen_config.derives,
+            &self.config.derives(),
             disallowed_derives,
         )];
 
         for gen_field in &self.gen_fields {
             gen_field.gen_type.structs(
                 &gen_field.base_type_name,
-                &self.gen_config.derives,
+                &self.config.derives(),
                 &mut structs,
             );
         }
@@ -165,6 +142,7 @@ impl GenField {
     }
 
     fn from_type(
+        config: &Config,
         tp: &Type,
         columns: &[ColumnDescPtr],
         current_column_index: usize,
@@ -195,7 +173,7 @@ impl GenField {
                         Self {
                             name,
                             base_type_name: mapping.rust_type_name().to_string(),
-                            attributes: mapping.attributes(optional),
+                            attributes: mapping.attributes(config.serde_support, optional),
                             optional,
                             gen_type: GenType::Column {
                                 index: current_column_index,
@@ -217,6 +195,7 @@ impl GenField {
                     super::util::supported_logical_list_element_type(basic_info, fields)
                 {
                     let (element_gen_field, new_current_column_index) = Self::from_type(
+                        config,
                         &element_type,
                         columns,
                         current_column_index,
@@ -266,6 +245,7 @@ impl GenField {
 
                     for field in fields {
                         let (gen_field, column_index) = Self::from_type(
+                            config,
                             field,
                             columns,
                             new_current_column_index,

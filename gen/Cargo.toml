@@ -18,7 +18,3 @@ parquet = "46"
 prettyplease = "0.2"
 syn = "2"
 thiserror = "1"
-
-[features]
-default = ["serde"]
-serde = []
