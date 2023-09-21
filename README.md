@@ -10,6 +10,16 @@ Please note that this software is **not** "open source",
 but the source is available for use and modification by individuals, non-profit organizations, and worker-owned businesses
 (see the [license section](#license) below for details).
 
+## Table of contents
+
+* [Example](#example)
+* [Dependencies](#dependencies)
+* [Usage](#usage)
+* [Testing](#testing)
+* [Status and scope](#status-and-scope)
+* [Warnings](#warnings)
+* [License](#license)
+
 ## Example
 
 Given a schema like this:
@@ -126,7 +136,7 @@ fn main() -> Result<(), parquetry_gen::error::Error> {
 By default the generated code is formatted with [`prettyplease`][prettyplease] and is annotated to indicate that it should not be formatted by Rustfmt,
 but if you'd prefer to use Rustfmt yourself, you can set `format` to false in the configuration.
 
-## Tests
+## Testing
 
 The default configuration will generate test code that uses [QuickCheck][quickcheck] to generate arbitrary values and confirm that they serialize and deserialize correctly.
 
