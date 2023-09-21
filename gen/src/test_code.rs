@@ -111,13 +111,17 @@ fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
                 };
                 gen_valid_date_time(date_time_unit, optional)
             }
-            TypeMapping::FixedLengthByteArray(len) => format!(
-                "[{}]",
-                (0..*len)
+            TypeMapping::FixedLengthByteArray(len) => {
+                let values = (0..*len)
                     .map(|_| "u8::arbitrary(g)")
                     .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+                    .join(", ");
+                if optional {
+                    format!("{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| [{}]) }}",  values)
+                } else {
+                    format!("[{}]", values)
+                }
+            }
             TypeMapping::F32 | TypeMapping::F64 => {
                 if optional {
                     format!("match Option::<{}>::arbitrary(g) {{ Some(value) if value.is_nan() => Some(0.0), value => value }}", mapping.rust_type_name())
