@@ -6,6 +6,7 @@ use std::{path::Path, sync::Arc};
 mod code;
 pub mod error;
 pub mod schema;
+mod test_code;
 mod types;
 mod util;
 
@@ -259,6 +260,12 @@ fn schema_to_scope(
         .arg("row", "parquet::record::Row")
         .ret("Result<Self, parquetry::error::Error>")
         .push_block(code::gen_row_conversion_block(schema)?);
+
+    if schema.config.tests {
+        let test_module = scope.new_module("test").attr("cfg(test)");
+
+        test_code::gen_test_code(test_module, schema)?;
+    }
 
     Ok(scope)
 }

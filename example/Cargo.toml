@@ -14,3 +14,8 @@ thiserror = "1"
 
 [build-dependencies]
 parquetry-gen = { path = "../gen/" }
+
+[dev-dependencies]
+bincode = { version = "2.0.0-rc.3", features = ["serde"] }
+quickcheck = "1"
+tempdir = "0.3"

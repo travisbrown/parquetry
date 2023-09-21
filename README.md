@@ -89,6 +89,17 @@ pub struct UserProfileInfo {
 
 It will also generate an instance of the `parquetry::Schema` trait for `User` with the code for reading and writing values to Parquet files.
 
+## Dependencies
+
+All usage requires the use of the `parquetry`, [`chrono`][chrono], and [`lazy_static`][lazy-static] crates as runtime dependencies.
+
+If the `serde_support` flag is enabled in configuration (which it is by default),
+you will also need a dependency on [`serde`][serde] with the `derive` feature enabled.
+
+If the `tests` flag is enabled in configuration (also the default),
+you will need to add [`bincode`][bincode] (a recent `2.0.0-rc.x` with the `serde` feature enabled),
+[`tempdir`][tempdir], and [`quickcheck`][quickcheck] to your `dev-dependencies`.
+
 ## Usage
 
 The `example` directory provides a fairly minimal example, and the generated code is checked in there.
@@ -115,7 +126,20 @@ fn main() -> Result<(), parquetry_gen::error::Error> {
 By default the generated code is formatted with [`prettyplease`][prettyplease] and is annotated to indicate that it should not be formatted by Rustfmt,
 but if you'd prefer to use Rustfmt yourself, you can set `format` to false in the configuration.
 
-The default `serde` feature can be disabled if you don't want the generated code to depend on [Serde][serde].
+## Tests
+
+The default configuration will generate test code that uses [QuickCheck][quickcheck] to generate arbitrary values and confirm that they serialize and deserialize correctly.
+
+The test code generation currently does not support some types.
+Specifically, sequences of floating point numbers, fixed-length byte arrays, and timestamps are not supported.
+If your schema contains any of these types, the generated test code will simply not compile, and you will have to disable the `tests` flag in your configuration
+(you can also open an issue if you'd like).
+
+The generated test code does not produce `NaN` values for floating point types.
+If you want to confirm that your system handles these values correctly, you'll have to do that manually.
+
+By default the generated arbitrary values for your types may be very large.
+You may want to set the `QUICKCHECK_GENERATOR_SIZE` environment variable to a small value (e.g. `10` or `20`) if your tests are too slow.
 
 ## Status and scope
 
@@ -177,9 +201,13 @@ This software is published under the [Anti-Capitalist Software License][acsl] (v
 [acsl]: https://anticapitalist.software/
 [arrow]: https://arrow.apache.org/
 [arrow-rs]: https://github.com/apache/arrow-rs
+[bincode]: https://docs.rs/bincode/latest/bincode/
 [chrono]: https://docs.rs/chrono/latest/chrono/
 [chrono-serde]: https://docs.rs/chrono/latest/chrono/serde/index.html
+[lazy-static]: https://docs.rs/lazy_static/latest/lazy_static/
 [parquet]: https://parquet.apache.org/
 [parquet-derive]: https://crates.io/crates/parquet_derive
 [prettyplease]: https://github.com/dtolnay/prettyplease
+[quickcheck]: https://docs.rs/quickcheck/latest/quickcheck/
 [serde]: https://serde.rs/
+[tempdir]: https://docs.rs/tempdir/latest/tempdir/
