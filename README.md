@@ -91,7 +91,7 @@ It will also generate an instance of the `parquetry::Schema` trait for `User` wi
 
 ## Dependencies
 
-All usage requires the use of the `parquetry`, [`chrono`][chrono], and [`lazy_static`][lazy-static] crates as runtime dependencies.
+All usage requires the use of the `parquetry`, [`parquet`][rust-parquet], [`chrono`][chrono], and [`lazy_static`][lazy-static] crates as runtime dependencies.
 
 If the `serde_support` flag is enabled in configuration (which it is by default),
 you will also need a dependency on [`serde`][serde] with the `derive` feature enabled.
@@ -209,5 +209,6 @@ This software is published under the [Anti-Capitalist Software License][acsl] (v
 [parquet-derive]: https://crates.io/crates/parquet_derive
 [prettyplease]: https://github.com/dtolnay/prettyplease
 [quickcheck]: https://docs.rs/quickcheck/latest/quickcheck/
+[rust-parquet]: https://docs.rs/parquet/latest/parquet/
 [serde]: https://serde.rs/
 [tempdir]: https://docs.rs/tempdir/latest/tempdir/
