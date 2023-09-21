@@ -5,13 +5,47 @@ use std::{path::Path, sync::Arc};
 
 mod code;
 pub mod error;
-mod names;
 pub mod schema;
+mod test_code;
 mod types;
 mod util;
 
 use error::Error;
-use schema::{GenConfig, GenSchema, GenStruct};
+use schema::{GenSchema, GenStruct};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Config {
+    pub base_derives: Vec<&'static str>,
+    pub format: bool,
+    pub serde_support: bool,
+    pub tests: bool,
+}
+
+impl Config {
+    pub fn derives(&self) -> Vec<&'static str> {
+        let mut derives = self.base_derives.clone();
+
+        if self.serde_support {
+            derives.push("serde::Deserialize");
+            derives.push("serde::Serialize");
+        }
+
+        derives
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        let base_derives = vec!["Clone", "Copy", "Debug", "Eq", "PartialEq"];
+
+        Self {
+            base_derives,
+            format: true,
+            serde_support: true,
+            tests: true,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ParsedFileSchema {
@@ -20,7 +54,7 @@ pub struct ParsedFileSchema {
     pub descriptor: SchemaDescriptor,
     scope: Scope,
     absolute_path: PathBuf,
-    config: GenConfig,
+    config: Config,
 }
 
 impl ParsedFileSchema {
@@ -38,7 +72,7 @@ impl ParsedFileSchema {
         }
     }
 
-    pub fn open<P: AsRef<Path>>(input: P, config: GenConfig) -> Result<ParsedFileSchema, Error> {
+    pub fn open<P: AsRef<Path>>(input: P, config: Config) -> Result<ParsedFileSchema, Error> {
         let input = input.as_ref();
         let schema_source = std::fs::read_to_string(input)?;
         let (schema, descriptor) = parse_schema(&schema_source, config.clone())?;
@@ -63,7 +97,7 @@ impl ParsedFileSchema {
 
     pub fn open_dir<P: AsRef<Path>>(
         input: P,
-        config: GenConfig,
+        config: Config,
         suffix: Option<&str>,
     ) -> Result<Vec<ParsedFileSchema>, Error> {
         let mut schemas = std::fs::read_dir(input)?
@@ -109,7 +143,7 @@ impl ParsedFileSchema {
 
 pub fn parse_schema(
     schema_source: &str,
-    config: GenConfig,
+    config: Config,
 ) -> Result<(GenSchema, SchemaDescriptor), Error> {
     let schema_type = Arc::new(parse_message_type(schema_source)?);
     let descriptor = SchemaDescriptor::new(schema_type);
@@ -226,6 +260,12 @@ fn schema_to_scope(
         .arg("row", "parquet::record::Row")
         .ret("Result<Self, parquetry::error::Error>")
         .push_block(code::gen_row_conversion_block(schema)?);
+
+    if schema.config.tests {
+        let test_module = scope.new_module("test").attr("cfg(test)");
+
+        test_code::gen_test_code(test_module, schema)?;
+    }
 
     Ok(scope)
 }

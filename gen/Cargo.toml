@@ -11,7 +11,6 @@ license-file = "../LICENSE"
 readme = "../README.md"
 
 [dependencies]
-chrono = { version = "0.4", features = ["serde"] }
 codegen = "0.2"
 convert_case = "0.6"
 lazy_static = "1"
@@ -19,7 +18,3 @@ parquet = "46"
 prettyplease = "0.2"
 syn = "2"
 thiserror = "1"
-
-[features]
-default = ["serde"]
-serde = []

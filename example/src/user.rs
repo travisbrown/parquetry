@@ -911,3 +911,163 @@ impl TryFrom<parquet::record::Row> for User {
         }
     }
 }
+#[cfg(test)]
+mod test {
+    impl quickcheck::Arbitrary for super::User {
+        fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+            Self {
+                id: <_>::arbitrary(g),
+                ts: chrono::SubsecRound::trunc_subsecs(
+                    chrono::TimeZone::timestamp_millis_opt(
+                            &chrono::Utc,
+                            gen_valid_timestamp_milli(g),
+                        )
+                        .single()
+                        .expect("Arbitrary instance for DateTime<Utc> is invalid"),
+                    3,
+                ),
+                status: <_>::arbitrary(g),
+                user_info: <_>::arbitrary(g),
+            }
+        }
+    }
+    impl quickcheck::Arbitrary for super::UserInfo {
+        fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+            Self {
+                screen_name: <_>::arbitrary(g),
+                user_name_info: <_>::arbitrary(g),
+            }
+        }
+    }
+    impl quickcheck::Arbitrary for super::UserNameInfo {
+        fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+            Self {
+                name: <_>::arbitrary(g),
+                user_profile_info: <_>::arbitrary(g),
+            }
+        }
+    }
+    impl quickcheck::Arbitrary for super::UserProfileInfo {
+        fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+            Self {
+                created_at: chrono::SubsecRound::trunc_subsecs(
+                    chrono::TimeZone::timestamp_millis_opt(
+                            &chrono::Utc,
+                            gen_valid_timestamp_milli(g),
+                        )
+                        .single()
+                        .expect("Arbitrary instance for DateTime<Utc> is invalid"),
+                    3,
+                ),
+                location: <_>::arbitrary(g),
+                description: <_>::arbitrary(g),
+                url: <_>::arbitrary(g),
+                followers_count: <_>::arbitrary(g),
+                friends_count: <_>::arbitrary(g),
+                favourites_count: <_>::arbitrary(g),
+                statuses_count: <_>::arbitrary(g),
+                withheld_in_countries: <_>::arbitrary(g),
+            }
+        }
+    }
+    fn round_trip_write_impl(groups: Vec<Vec<super::User>>) -> bool {
+        let test_dir = tempdir::TempDir::new("User-data").unwrap();
+        let test_file_path = test_dir.path().join("write-data.parquet");
+        let test_file = std::fs::File::create(&test_file_path).unwrap();
+        <super::User as parquetry::Schema>::write(
+                test_file,
+                Default::default(),
+                groups.clone(),
+            )
+            .unwrap();
+        let read_file = std::fs::File::open(test_file_path).unwrap();
+        let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new()
+            .build();
+        let read_values = <super::User as parquetry::Schema>::read(
+                read_file,
+                read_options,
+            )
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        read_values == groups.into_iter().flatten().collect::<Vec<_>>()
+    }
+    quickcheck::quickcheck! {
+        fn round_trip_write(groups : Vec < Vec < super::User >>) -> bool {
+        round_trip_write_impl(groups) }
+    }
+    fn round_trip_write_group_impl(groups: Vec<Vec<super::User>>) -> bool {
+        let test_dir = tempdir::TempDir::new("User-data").unwrap();
+        let test_file_path = test_dir.path().join("write_group-data.parquet");
+        let test_file = std::fs::File::create(&test_file_path).unwrap();
+        let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
+                test_file,
+                <super::User as parquetry::Schema>::schema(),
+                Default::default(),
+            )
+            .unwrap();
+        for group in &groups {
+            <super::User as parquetry::Schema>::write_group(&mut file_writer, group)
+                .unwrap();
+        }
+        file_writer.close().unwrap();
+        let read_file = std::fs::File::open(test_file_path).unwrap();
+        let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new()
+            .build();
+        let read_values = <super::User as parquetry::Schema>::read(
+                read_file,
+                read_options,
+            )
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        read_values == groups.into_iter().flatten().collect::<Vec<_>>()
+    }
+    quickcheck::quickcheck! {
+        fn round_trip_write_group(groups : Vec < Vec < super::User >>) -> bool {
+        round_trip_write_group_impl(groups) }
+    }
+    fn round_trip_serde_bincode_impl(values: Vec<super::User>) -> bool {
+        let wrapped = bincode::serde::Compat(&values);
+        let encoded = bincode::encode_to_vec(&wrapped, bincode::config::standard())
+            .unwrap();
+        let decoded: (bincode::serde::Compat<Vec<super::User>>, _) = bincode::decode_from_slice(
+                &encoded.as_slice(),
+                bincode::config::standard(),
+            )
+            .unwrap();
+        decoded.0.0 == values
+    }
+    quickcheck::quickcheck! {
+        fn round_trip_serde_bincode(values : Vec < super::User >) -> bool {
+        round_trip_serde_bincode_impl(values) }
+    }
+    fn gen_valid_timestamp_milli(g: &mut quickcheck::Gen) -> i64 {
+        {
+            use quickcheck::Arbitrary;
+            let min = chrono::DateTime::<chrono::Utc>::MIN_UTC.timestamp_millis();
+            let max = chrono::DateTime::<chrono::Utc>::MAX_UTC.timestamp_millis();
+            let value: i64 = <_>::arbitrary(g);
+            if value < min {
+                value % min
+            } else if value > max {
+                value % max
+            } else {
+                value
+            }
+        }
+    }
+    fn gen_valid_timestamp_micro(g: &mut quickcheck::Gen) -> i64 {
+        {
+            use quickcheck::Arbitrary;
+            let min = chrono::DateTime::<chrono::Utc>::MIN_UTC.timestamp_micros();
+            let max = chrono::DateTime::<chrono::Utc>::MAX_UTC.timestamp_micros();
+            let value: i64 = <_>::arbitrary(g);
+            if value < min {
+                value % min
+            } else if value > max {
+                value % max
+            } else {
+                value
+            }
+        }
+    }
+}
