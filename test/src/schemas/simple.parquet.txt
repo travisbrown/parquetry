@@ -22,4 +22,5 @@ message simple {
 
     required fixed_len_byte_array (20) abcd;
     optional byte_array efgh;
+    optional fixed_len_byte_array (3) ijkl;
 }
