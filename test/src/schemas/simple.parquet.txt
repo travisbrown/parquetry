@@ -1,6 +1,7 @@
 message simple {
     required int64 abc (integer(64, false));
     optional byte_array def (string);
+    required byte_array req_def (string);
 
     required group ghi (list) {
         repeated group list {

@@ -6,6 +6,8 @@ use parquet::{
 use std::collections::HashSet;
 use std::ops::Range;
 
+use crate::types::TypeMapping;
+
 use super::{error::Error, Config};
 
 #[derive(Clone, Debug)]
@@ -26,11 +28,7 @@ pub struct GenField {
 
 #[derive(Clone, Debug)]
 pub enum GenType {
-    Column {
-        index: usize,
-        descriptor: ColumnDescPtr,
-        mapping: super::types::TypeMapping,
-    },
+    Column(GenColumn),
     Struct {
         gen_fields: Vec<GenField>,
         def_depth: usize,
@@ -50,6 +48,14 @@ pub struct GenStruct {
     pub type_name: String,
     pub fields: Vec<GenField>,
     pub derives: Vec<&'static str>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GenColumn {
+    pub index: usize,
+    pub rust_path: Vec<(String, bool)>,
+    pub descriptor: ColumnDescPtr,
+    pub mapping: TypeMapping,
 }
 
 impl GenStruct {
@@ -79,7 +85,17 @@ impl GenSchema {
             base_type_name,
             gen_type: GenType::Struct { gen_fields, .. },
             ..
-        } = GenField::from_type(&config, schema.root_schema(), schema.columns(), 0, 0, 0)?.0
+        } = GenField::from_type(
+            &config,
+            schema.root_schema(),
+            schema.columns(),
+            0,
+            "",
+            vec![],
+            0,
+            0,
+        )?
+        .0
         {
             Ok(Self {
                 type_name: base_type_name,
@@ -122,6 +138,16 @@ impl GenSchema {
 
         structs
     }
+
+    pub fn gen_columns(&self) -> Vec<GenColumn> {
+        let mut gen_columns = vec![];
+
+        for gen_field in &self.gen_fields {
+            gen_field.gen_type.gen_columns(&mut gen_columns);
+        }
+
+        gen_columns
+    }
 }
 
 impl GenField {
@@ -146,6 +172,8 @@ impl GenField {
         tp: &Type,
         columns: &[ColumnDescPtr],
         current_column_index: usize,
+        name: &str,
+        rust_path: Vec<(String, bool)>,
         def_depth: usize,
         rep_depth: usize,
     ) -> Result<(Self, usize), Error> {
@@ -160,7 +188,6 @@ impl GenField {
                 if basic_info.repetition() == Repetition::REPEATED {
                     Err(Error::UnsupportedRepetition(basic_info.name().to_string()))
                 } else {
-                    let name = Self::field_name(basic_info.name());
                     let column = columns[current_column_index].clone();
                     let mapping = super::types::TypeMapping::from_types(
                         column.logical_type(),
@@ -171,15 +198,16 @@ impl GenField {
 
                     Ok((
                         Self {
-                            name,
+                            name: name.to_string(),
                             base_type_name: mapping.rust_type_name().to_string(),
                             attributes: mapping.attributes(config.serde_support, optional),
                             optional,
-                            gen_type: GenType::Column {
+                            gen_type: GenType::Column(GenColumn {
                                 index: current_column_index,
+                                rust_path,
                                 descriptor: column,
                                 mapping,
-                            },
+                            }),
                         },
                         current_column_index + 1,
                     ))
@@ -199,6 +227,8 @@ impl GenField {
                         &element_type,
                         columns,
                         current_column_index,
+                        &Self::field_name(element_type.get_basic_info().name()),
+                        rust_path,
                         new_def_depth + 1,
                         rep_depth + 1,
                     )?;
@@ -244,11 +274,16 @@ impl GenField {
                     let mut new_current_column_index = current_column_index;
 
                     for field in fields {
+                        let name = Self::field_name(field.get_basic_info().name());
+                        let mut rust_path = rust_path.clone();
+                        rust_path.push((name.clone(), field.is_optional()));
                         let (gen_field, column_index) = Self::from_type(
                             config,
                             field,
                             columns,
                             new_current_column_index,
+                            &name,
+                            rust_path,
                             new_def_depth,
                             rep_depth,
                         )?;
@@ -279,7 +314,7 @@ impl GenField {
 impl GenType {
     pub fn column_indices(&self) -> Range<usize> {
         match self {
-            GenType::Column { index, .. } => *index..*index + 1,
+            GenType::Column(GenColumn { index, .. }) => *index..*index + 1,
             GenType::Struct { gen_fields, .. } => {
                 let mut start = usize::MAX;
                 let mut end = usize::MIN;
@@ -299,9 +334,9 @@ impl GenType {
 
     pub fn repeated_column_indices(&self) -> Vec<usize> {
         match self {
-            GenType::Column {
+            GenType::Column(GenColumn {
                 index, descriptor, ..
-            } => {
+            }) => {
                 if descriptor.max_rep_level() > 0 {
                     vec![*index]
                 } else {
@@ -329,7 +364,7 @@ impl GenType {
         let mut values = HashSet::new();
 
         match self {
-            GenType::Column { mapping, .. } => {
+            GenType::Column(GenColumn { mapping, .. }) => {
                 values.extend(&mapping.disallowed_derives());
             }
             GenType::Struct { gen_fields, .. } => {
@@ -374,5 +409,33 @@ impl GenType {
                 ..
             } => element_gen_type.structs(element_struct_name, base_derives, acc),
         }
+    }
+
+    fn gen_columns(&self, acc: &mut Vec<GenColumn>) {
+        match self {
+            GenType::Column(column) => {
+                acc.push(column.clone());
+            }
+            GenType::Struct { gen_fields, .. } => {
+                for gen_field in gen_fields {
+                    gen_field.gen_type.gen_columns(acc);
+                }
+            }
+            GenType::List {
+                element_gen_type, ..
+            } => {
+                element_gen_type.gen_columns(acc);
+            }
+        }
+    }
+}
+
+impl GenColumn {
+    pub fn variant_name(&self) -> String {
+        self.rust_path.last().unwrap().0.to_case(Case::Pascal)
+    }
+
+    pub fn is_sort_column(&self) -> bool {
+        self.descriptor.max_rep_level() == 0
     }
 }
