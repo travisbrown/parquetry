@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::{path::Path, sync::Arc};
 
 mod code;
+mod column_code;
 pub mod error;
 pub mod schema;
 mod test_code;
@@ -192,7 +193,11 @@ fn schema_to_scope(
         }
     }
 
-    code::add_column_info_modules(&mut scope, descriptor.columns());
+    for gen_column in schema.gen_columns() {
+        println!("{:?}", gen_column);
+    }
+
+    column_code::add_column_info_modules(&mut scope, &schema.gen_columns());
     code::add_workspace_struct(&mut scope, descriptor.columns())?;
 
     let base_impl = scope.new_impl(&schema.type_name);

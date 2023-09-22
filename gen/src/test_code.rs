@@ -1,7 +1,7 @@
 use codegen::{Block, Module};
 
 use crate::{
-    schema::{GenSchema, GenType},
+    schema::{GenColumn, GenSchema, GenType},
     types::{DateTimeUnit, TypeMapping},
 };
 
@@ -103,7 +103,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
 
 fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
     match gen_type {
-        GenType::Column { mapping, .. } => match mapping {
+        GenType::Column(GenColumn { mapping, .. }) => match mapping {
             TypeMapping::DateTime(date_time_unit) => {
                 let date_time_unit = match date_time_unit {
                     DateTimeUnit::Millis => "milli",

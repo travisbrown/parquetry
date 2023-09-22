@@ -1,6 +1,7 @@
-use codegen::{Block, Module, Scope};
-use convert_case::{Case, Casing};
+use codegen::{Block, Scope};
 use parquet::{basic::Type as PhysicalType, schema::types::ColumnDescPtr};
+
+use crate::schema::GenColumn;
 
 use super::{
     error::Error,
@@ -62,12 +63,12 @@ fn gen_type_writer_code(
     rep_level: Option<usize>,
 ) -> Result<Vec<String>, Error> {
     let code = match gen_type {
-        GenType::Column {
+        GenType::Column(GenColumn {
             index,
             descriptor,
             mapping,
             ..
-        } => {
+        }) => {
             let assignment = gen_push(
                 format!("workspace.{}", values_var_name(*index)),
                 mapping.physical_type_conversion(name),
@@ -273,7 +274,7 @@ fn gen_row_match_lines(
     }
 
     match gen_type {
-        GenType::Column { mapping, .. } => {
+        GenType::Column(GenColumn { mapping, .. }) => {
             if optional {
                 lines.push(format!(
                     "parquet::record::Field::{}({}) => Ok(Some({})),",
@@ -477,102 +478,6 @@ pub fn gen_write_with_workspace_block(columns: &[ColumnDescPtr]) -> Result<Block
     block.line("Ok(row_group_writer.close()?)");
 
     Ok(block)
-}
-
-enum ColumnInfoTree {
-    Leaf(usize, ColumnDescPtr),
-    Branch(ColumnInfoBranch),
-}
-
-impl ColumnInfoTree {
-    fn add(&self, module: &mut Module, name: &str) {
-        match self {
-            Self::Leaf(index, column) => {
-                let path_parts = column
-                    .path()
-                    .parts()
-                    .iter()
-                    .map(|part| format!("\"{}\"", part))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                module
-                    .scope()
-                    .raw(format!("pub const {}: parquetry::ColumnInfo = parquetry::ColumnInfo {{ index: {}, path: &[{}] }};", name.to_case(Case::ScreamingSnake), index, path_parts));
-            }
-            Self::Branch(branch) => {
-                let child_module = module.new_module(name).vis("pub");
-                for (name, tree) in &branch.0 {
-                    tree.add(child_module, name);
-                }
-            }
-        }
-    }
-}
-
-struct ColumnInfoBranch(Vec<(String, ColumnInfoTree)>);
-
-impl ColumnInfoBranch {
-    fn get_branch(&mut self, target_name: &str) -> Option<&mut ColumnInfoBranch> {
-        self.0.iter_mut().find_map(|(name, tree)| match tree {
-            ColumnInfoTree::Branch(branch) if name == target_name => Some(branch),
-            _ => None,
-        })
-    }
-
-    fn add(&mut self, path: Option<Vec<String>>, index: usize, column: ColumnDescPtr) {
-        match path {
-            None => self.add(
-                Some(
-                    column
-                        .path()
-                        .parts()
-                        .iter()
-                        .filter(|value| *value != "list" && *value != "element")
-                        .rev()
-                        .cloned()
-                        .collect(),
-                ),
-                index,
-                column.clone(),
-            ),
-            Some(mut path) => {
-                if path.len() == 1 {
-                    self.0
-                        .push((path[0].clone(), ColumnInfoTree::Leaf(index, column)));
-                } else {
-                    if let Some(next) = path.pop() {
-                        let tree = match self.get_branch(&next) {
-                            Some(existing) => existing,
-                            None => {
-                                self.0.push((
-                                    next.clone(),
-                                    ColumnInfoTree::Branch(ColumnInfoBranch(vec![])),
-                                ));
-                                self.get_branch(&next).unwrap()
-                            }
-                        };
-
-                        tree.add(Some(path), index, column.clone())
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn add_column_info_modules(scope: &mut Scope, columns: &[ColumnDescPtr]) {
-    let mut root = ColumnInfoBranch(vec![]);
-
-    for (index, column) in columns.iter().enumerate() {
-        root.add(None, index, column.clone());
-    }
-
-    let module = scope.new_module("columns").vis("pub");
-
-    for (name, tree) in root.0 {
-        tree.add(module, &name);
-    }
 }
 
 pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Result<(), Error> {
