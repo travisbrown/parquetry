@@ -522,6 +522,51 @@ pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Res
     Ok(())
 }
 
+pub fn gen_sort_key_block() -> Block {
+    let mut block = Block::new("");
+    block.line("let mut bytes = vec![];");
+    block.line("for column in columns {");
+    block.line("self.write_sort_key_bytes(*column, &mut bytes);");
+    block.line("}");
+    block.line("bytes");
+    block
+}
+
+pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error> {
+    let mut block = Block::new("match column.column");
+    for gen_column in schema
+        .gen_columns()
+        .iter()
+        .filter(|gen_column| gen_column.is_sort_column())
+    {
+        let mut value_path = String::new();
+        let mut any_optional = false;
+        for (part, optional) in &gen_column.rust_path {
+            if any_optional {
+                if *optional {
+                    value_path.push_str(&format!(".and_then(|value| value.{}.as_ref())", part));
+                } else {
+                    value_path.push_str(&format!(".map(|value| &value.{})", part));
+                }
+            } else {
+                value_path.push_str(&format!(".{}", part));
+
+                if *optional {
+                    value_path.push_str(".as_ref()");
+                }
+                any_optional = true;
+            }
+        }
+
+        block.line(format!(
+            "columns::SortColumn::{} => {{ let value = &self{}; todo![] }},",
+            gen_column.variant_name(),
+            "" //value_path
+        ));
+    }
+    Ok(block)
+}
+
 fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
     match t {
         PhysicalType::BOOLEAN => Ok("BoolType"),

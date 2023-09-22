@@ -30,9 +30,61 @@ impl ColumnInfo {
     }
 }
 
+pub trait SortColumn {
+    fn index(&self) -> usize;
+}
+
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct Sort<C> {
+    pub column: C,
+    pub descending: bool,
+    pub nulls_first: bool,
+}
+
+impl<C: Copy> Sort<C> {
+    pub fn new(column: C) -> Self {
+        Self {
+            column,
+            descending: false,
+            nulls_first: false,
+        }
+    }
+
+    pub fn descending(&self) -> Self {
+        Self {
+            column: self.column,
+            descending: true,
+            nulls_first: self.nulls_first,
+        }
+    }
+
+    pub fn nulls_first(&self) -> Self {
+        Self {
+            column: self.column,
+            descending: self.descending,
+            nulls_first: true,
+        }
+    }
+
+    pub fn sorting_column(&self) -> SortingColumn
+    where
+        C: SortColumn,
+    {
+        SortingColumn::new(
+            self.column.index() as i32,
+            self.descending,
+            self.nulls_first,
+        )
+    }
+}
+
 pub trait Schema: Sized {
+    type SortColumn;
+
     fn source() -> &'static str;
     fn schema() -> TypePtr;
+
+    fn sort_key(&self, columns: &[Sort<Self::SortColumn>]) -> Vec<u8>;
 
     fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> SchemaIter<Self> {
         match SerializedFileReader::new_with_options(reader, options) {

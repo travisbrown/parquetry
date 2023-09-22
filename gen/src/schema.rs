@@ -53,7 +53,7 @@ pub struct GenStruct {
 #[derive(Clone, Debug)]
 pub struct GenColumn {
     pub index: usize,
-    pub rust_path: Vec<String>,
+    pub rust_path: Vec<(String, bool)>,
     pub descriptor: ColumnDescPtr,
     pub mapping: TypeMapping,
 }
@@ -173,7 +173,7 @@ impl GenField {
         columns: &[ColumnDescPtr],
         current_column_index: usize,
         name: &str,
-        rust_path: Vec<String>,
+        rust_path: Vec<(String, bool)>,
         def_depth: usize,
         rep_depth: usize,
     ) -> Result<(Self, usize), Error> {
@@ -276,7 +276,7 @@ impl GenField {
                     for field in fields {
                         let name = Self::field_name(field.get_basic_info().name());
                         let mut rust_path = rust_path.clone();
-                        rust_path.push(name.clone());
+                        rust_path.push((name.clone(), field.is_optional()));
                         let (gen_field, column_index) = Self::from_type(
                             config,
                             field,
@@ -427,5 +427,15 @@ impl GenType {
                 element_gen_type.gen_columns(acc);
             }
         }
+    }
+}
+
+impl GenColumn {
+    pub fn variant_name(&self) -> String {
+        self.rust_path.last().unwrap().0.to_case(Case::Pascal)
+    }
+
+    pub fn is_sort_column(&self) -> bool {
+        self.descriptor.max_rep_level() == 0
     }
 }

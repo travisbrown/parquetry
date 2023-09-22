@@ -198,31 +198,18 @@ fn schema_to_scope(
     }
 
     column_code::add_column_info_modules(&mut scope, &schema.gen_columns());
-    code::add_workspace_struct(&mut scope, descriptor.columns())?;
-
-    let base_impl = scope.new_impl(&schema.type_name);
-
-    base_impl
-        .new_fn("write_with_workspace")
-        .generic("W: std::io::Write + Send")
-        .arg(
-            "file_writer",
-            "&mut parquet::file::writer::SerializedFileWriter<W>",
-        )
-        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
-        .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
-        .push_block(code::gen_write_with_workspace_block(descriptor.columns())?);
-
-    base_impl
-        .new_fn("fill_workspace")
-        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
-        .arg("group", "&[Self]")
-        .ret("Result<usize, parquetry::error::Error>")
-        .push_block(code::gen_fill_workspace_block(schema)?);
 
     let schema_impl = scope
         .new_impl(&schema.type_name)
-        .impl_trait("parquetry::Schema");
+        .impl_trait("parquetry::Schema")
+        .associate_type("SortColumn", "columns::SortColumn");
+
+    schema_impl
+        .new_fn("sort_key")
+        .arg_ref_self()
+        .arg("columns", "&[parquetry::Sort<Self::SortColumn>]")
+        .ret("Vec<u8>")
+        .push_block(code::gen_sort_key_block());
 
     schema_impl
         .new_fn("source")
@@ -265,6 +252,38 @@ fn schema_to_scope(
         .arg("row", "parquet::record::Row")
         .ret("Result<Self, parquetry::error::Error>")
         .push_block(code::gen_row_conversion_block(schema)?);
+
+    let base_impl = scope.new_impl(&schema.type_name);
+
+    base_impl
+        .new_fn("write_sort_key_bytes")
+        .arg_ref_self()
+        .arg(
+            "column",
+            "parquetry::Sort<<Self as parquetry::Schema>::SortColumn>",
+        )
+        .arg("bytes", "&mut Vec<u8>")
+        .push_block(code::gen_write_sort_key_bytes_block(schema)?);
+
+    base_impl
+        .new_fn("write_with_workspace")
+        .generic("W: std::io::Write + Send")
+        .arg(
+            "file_writer",
+            "&mut parquet::file::writer::SerializedFileWriter<W>",
+        )
+        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
+        .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
+        .push_block(code::gen_write_with_workspace_block(descriptor.columns())?);
+
+    base_impl
+        .new_fn("fill_workspace")
+        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
+        .arg("group", "&[Self]")
+        .ret("Result<usize, parquetry::error::Error>")
+        .push_block(code::gen_fill_workspace_block(schema)?);
+
+    code::add_workspace_struct(&mut scope, descriptor.columns())?;
 
     if schema.config.tests {
         let test_module = scope.new_module("test").attr("cfg(test)");
