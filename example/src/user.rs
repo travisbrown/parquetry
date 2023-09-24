@@ -209,11 +209,11 @@ pub mod columns {
 }
 impl parquetry::Schema for User {
     type SortColumn = columns::SortColumn;
-    fn sort_key_value(&self, columns: &[parquetry::Sort<Self::SortColumn>]) -> Vec<u8> {
+    fn sort_key_value(&self, sort_key: parquetry::SortKey<Self::SortColumn>) -> Vec<u8> {
         {
             let mut bytes = vec![];
-            for column in columns {
-                self.write_sort_key_bytes(*column, &mut bytes);
+            for column in sort_key.columns() {
+                self.write_sort_key_bytes(column, &mut bytes);
             }
             bytes
         }

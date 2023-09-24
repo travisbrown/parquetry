@@ -525,8 +525,8 @@ pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Res
 pub fn gen_sort_key_value_block() -> Block {
     let mut block = Block::new("");
     block.line("let mut bytes = vec![];");
-    block.line("for column in columns {");
-    block.line("self.write_sort_key_bytes(*column, &mut bytes);");
+    block.line("for column in sort_key.columns() {");
+    block.line("self.write_sort_key_bytes(column, &mut bytes);");
     block.line("}");
     block.line("bytes");
     block

@@ -87,6 +87,22 @@ pub enum SortKey<C> {
     Columns5(Sort<C>, Sort<C>, Sort<C>, Sort<C>, Sort<C>),
 }
 
+impl<C: Copy> SortKey<C> {
+    pub fn columns(&self) -> Vec<Sort<C>> {
+        match self {
+            Self::Columns1(column_0) => vec![*column_0],
+            Self::Columns2(column_0, column_1) => vec![*column_0, *column_1],
+            Self::Columns3(column_0, column_1, column_2) => vec![*column_0, *column_1, *column_2],
+            Self::Columns4(column_0, column_1, column_2, column_3) => {
+                vec![*column_0, *column_1, *column_2, *column_3]
+            }
+            Self::Columns5(column_0, column_1, column_2, column_3, column_4) => {
+                vec![*column_0, *column_1, *column_2, *column_3, *column_4]
+            }
+        }
+    }
+}
+
 pub trait Schema: Sized {
     type SortColumn;
 
@@ -127,7 +143,7 @@ pub trait Schema: Sized {
         }
     }
 
-    fn sort_key_value(&self, columns: &[Sort<Self::SortColumn>]) -> Vec<u8>;
+    fn sort_key_value(&self, sort_key: SortKey<Self::SortColumn>) -> Vec<u8>;
 
     fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> SchemaIter<Self> {
         match SerializedFileReader::new_with_options(reader, options) {
