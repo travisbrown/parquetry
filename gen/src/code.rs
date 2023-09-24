@@ -392,7 +392,7 @@ pub fn gen_write_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line("let mut file_writer = ");
-    block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.clone(), std::sync::Arc::new(properties))?;");
+    block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?;");
     block.line(format!(
         "let mut workspace = {}::default();",
         WORKSPACE_STRUCT_NAME
@@ -522,7 +522,7 @@ pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Res
     Ok(())
 }
 
-pub fn gen_sort_key_block() -> Block {
+pub fn gen_sort_key_value_block() -> Block {
     let mut block = Block::new("");
     block.line("let mut bytes = vec![];");
     block.line("for column in columns {");
@@ -561,7 +561,7 @@ pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error
         block.line(format!(
             "columns::SortColumn::{} => {{ let value = &self{}; todo![] }},",
             gen_column.variant_name(),
-            "" //value_path
+            value_path
         ));
     }
     Ok(block)

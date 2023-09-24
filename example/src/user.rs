@@ -31,9 +31,9 @@ const SCHEMA_SOURCE: &str = "message user {
     }
 }";
 lazy_static::lazy_static! {
-    pub static ref SCHEMA : parquet::schema::types::TypePtr =
-    std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
-    .unwrap());
+    pub static ref SCHEMA : parquet::schema::types::SchemaDescPtr =
+    std::sync::Arc::new(parquet::schema::types::SchemaDescriptor::new(std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
+    .unwrap())));
 }
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct User {
@@ -209,7 +209,7 @@ pub mod columns {
 }
 impl parquetry::Schema for User {
     type SortColumn = columns::SortColumn;
-    fn sort_key(&self, columns: &[parquetry::Sort<Self::SortColumn>]) -> Vec<u8> {
+    fn sort_key_value(&self, columns: &[parquetry::Sort<Self::SortColumn>]) -> Vec<u8> {
         {
             let mut bytes = vec![];
             for column in columns {
@@ -221,7 +221,7 @@ impl parquetry::Schema for User {
     fn source() -> &'static str {
         SCHEMA_SOURCE
     }
-    fn schema() -> parquet::schema::types::TypePtr {
+    fn schema() -> parquet::schema::types::SchemaDescPtr {
         SCHEMA.clone()
     }
     fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
@@ -232,7 +232,7 @@ impl parquetry::Schema for User {
         {
             let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
                 writer,
-                SCHEMA.clone(),
+                SCHEMA.root_schema_ptr(),
                 std::sync::Arc::new(properties),
             )?;
             let mut workspace = ParquetryWorkspace::default();
@@ -578,59 +578,103 @@ impl User {
     fn write_sort_key_bytes(
         &self,
         column: parquetry::Sort<<Self as parquetry::Schema>::SortColumn>,
-        bytes: &mut Vec<u8>,
+        bytes: &mut [u8],
     ) {
         match column.column {
             columns::SortColumn::Id => {
-                let value = &self;
+                let value = &self.id;
                 todo![]
             }
             columns::SortColumn::Ts => {
-                let value = &self;
+                let value = &self.ts;
                 todo![]
             }
             columns::SortColumn::Status => {
-                let value = &self;
+                let value = &self.status.as_ref();
                 todo![]
             }
             columns::SortColumn::ScreenName => {
-                let value = &self;
+                let value = &self.user_info.as_ref().map(|value| &value.screen_name);
                 todo![]
             }
             columns::SortColumn::Name => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .map(|value| &value.name);
                 todo![]
             }
             columns::SortColumn::CreatedAt => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.created_at);
                 todo![]
             }
             columns::SortColumn::Location => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.location);
                 todo![]
             }
             columns::SortColumn::Description => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.description);
                 todo![]
             }
             columns::SortColumn::Url => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .and_then(|value| value.url.as_ref());
                 todo![]
             }
             columns::SortColumn::FollowersCount => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.followers_count);
                 todo![]
             }
             columns::SortColumn::FriendsCount => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.friends_count);
                 todo![]
             }
             columns::SortColumn::FavouritesCount => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.favourites_count);
                 todo![]
             }
             columns::SortColumn::StatusesCount => {
-                let value = &self;
+                let value = &self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.statuses_count);
                 todo![]
             }
         }
@@ -1106,7 +1150,7 @@ mod test {
         let test_file = std::fs::File::create(&test_file_path).unwrap();
         let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
                 test_file,
-                <super::User as parquetry::Schema>::schema(),
+                <super::User as parquetry::Schema>::schema().root_schema_ptr(),
                 Default::default(),
             )
             .unwrap();

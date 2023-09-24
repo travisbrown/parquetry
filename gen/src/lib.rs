@@ -154,8 +154,14 @@ pub fn parse_schema(
 }
 
 const STATIC_SCHEMA_DEF: &str = "lazy_static::lazy_static! {
-    pub static ref SCHEMA: parquet::schema::types::TypePtr =
-        std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE).unwrap());
+    pub static ref SCHEMA: parquet::schema::types::SchemaDescPtr =
+        std::sync::Arc::new(
+            parquet::schema::types::SchemaDescriptor::new(
+                std::sync::Arc::new(
+                    parquet::schema::parser::parse_message_type(SCHEMA_SOURCE).unwrap()
+                )
+            )
+        );
 }";
 
 fn schema_to_scope(
@@ -205,11 +211,11 @@ fn schema_to_scope(
         .associate_type("SortColumn", "columns::SortColumn");
 
     schema_impl
-        .new_fn("sort_key")
+        .new_fn("sort_key_value")
         .arg_ref_self()
         .arg("columns", "&[parquetry::Sort<Self::SortColumn>]")
         .ret("Vec<u8>")
-        .push_block(code::gen_sort_key_block());
+        .push_block(code::gen_sort_key_value_block());
 
     schema_impl
         .new_fn("source")
@@ -218,7 +224,7 @@ fn schema_to_scope(
 
     schema_impl
         .new_fn("schema")
-        .ret("parquet::schema::types::TypePtr")
+        .ret("parquet::schema::types::SchemaDescPtr")
         .line("SCHEMA.clone()");
 
     schema_impl
@@ -262,7 +268,7 @@ fn schema_to_scope(
             "column",
             "parquetry::Sort<<Self as parquetry::Schema>::SortColumn>",
         )
-        .arg("bytes", "&mut Vec<u8>")
+        .arg("bytes", "&mut [u8]")
         .push_block(code::gen_write_sort_key_bytes_block(schema)?);
 
     base_impl

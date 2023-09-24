@@ -8,7 +8,7 @@ use parquet::{
     },
     format::SortingColumn,
     record::{reader::RowIter, Row},
-    schema::types::{ColumnPath, TypePtr},
+    schema::types::{ColumnPath, SchemaDescPtr},
 };
 
 pub mod error;
@@ -78,13 +78,56 @@ impl<C: Copy> Sort<C> {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum SortKey<C> {
+    Columns1(Sort<C>),
+    Columns2(Sort<C>, Sort<C>),
+    Columns3(Sort<C>, Sort<C>, Sort<C>),
+    Columns4(Sort<C>, Sort<C>, Sort<C>, Sort<C>),
+    Columns5(Sort<C>, Sort<C>, Sort<C>, Sort<C>, Sort<C>),
+}
+
 pub trait Schema: Sized {
     type SortColumn;
 
     fn source() -> &'static str;
-    fn schema() -> TypePtr;
+    fn schema() -> SchemaDescPtr;
 
-    fn sort_key(&self, columns: &[Sort<Self::SortColumn>]) -> Vec<u8>;
+    fn sort_key(
+        columns: &[Sort<Self::SortColumn>],
+    ) -> Result<SortKey<Self::SortColumn>, error::SortKeyError>
+    where
+        Self::SortColumn: SortColumn + Copy,
+    {
+        if columns.len() > 5 {
+            Err(error::SortKeyError::UnsupportedLength(columns.len()))
+        } else {
+            let schema = Self::schema();
+            let descriptors = schema.columns();
+
+            if columns.iter().any(|column| {
+                descriptors[column.column.index()].physical_type()
+                    == parquet::basic::Type::BYTE_ARRAY
+            }) {
+                Err(error::SortKeyError::NonSingletonByteArrayKey)
+            } else {
+                match columns.len() {
+                    1 => Ok(SortKey::Columns1(columns[0])),
+                    2 => Ok(SortKey::Columns2(columns[0], columns[1])),
+                    3 => Ok(SortKey::Columns3(columns[0], columns[1], columns[2])),
+                    4 => Ok(SortKey::Columns4(
+                        columns[0], columns[1], columns[2], columns[3],
+                    )),
+                    5 => Ok(SortKey::Columns5(
+                        columns[0], columns[1], columns[2], columns[3], columns[4],
+                    )),
+                    other => Err(error::SortKeyError::UnsupportedLength(other)),
+                }
+            }
+        }
+    }
+
+    fn sort_key_value(&self, columns: &[Sort<Self::SortColumn>]) -> Vec<u8>;
 
     fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> SchemaIter<Self> {
         match SerializedFileReader::new_with_options(reader, options) {
