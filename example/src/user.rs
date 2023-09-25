@@ -578,104 +578,218 @@ impl User {
     fn write_sort_key_bytes(
         &self,
         column: parquetry::Sort<<Self as parquetry::Schema>::SortColumn>,
-        bytes: &mut [u8],
+        bytes: &mut Vec<u8>,
     ) {
         match column.column {
             columns::SortColumn::Id => {
-                let value = &self.id;
-                todo![]
+                let value = self.id;
+                for b in value.to_be_bytes() {
+                    bytes.push(if column.descending { !b } else { b });
+                }
             }
             columns::SortColumn::Ts => {
-                let value = &self.ts;
-                todo![]
+                let value = self.ts;
+                for b in value.timestamp_micros().to_be_bytes() {
+                    bytes.push(if column.descending { !b } else { b });
+                }
             }
             columns::SortColumn::Status => {
-                let value = &self.status.as_ref();
-                todo![]
+                let value = self.status;
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::ScreenName => {
-                let value = &self.user_info.as_ref().map(|value| &value.screen_name);
-                todo![]
+                let value = self.user_info.as_ref().map(|value| &value.screen_name);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::Name => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .map(|value| &value.name);
-                todo![]
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::CreatedAt => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
-                    .map(|value| &value.created_at);
-                todo![]
+                    .map(|value| value.created_at);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.timestamp_micros().to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::Location => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
                     .map(|value| &value.location);
-                todo![]
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::Description => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
                     .map(|value| &value.description);
-                todo![]
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::Url => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
                     .and_then(|value| value.url.as_ref());
-                todo![]
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::FollowersCount => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
-                    .map(|value| &value.followers_count);
-                todo![]
+                    .map(|value| value.followers_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::FriendsCount => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
-                    .map(|value| &value.friends_count);
-                todo![]
+                    .map(|value| value.friends_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::FavouritesCount => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
-                    .map(|value| &value.favourites_count);
-                todo![]
+                    .map(|value| value.favourites_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
             columns::SortColumn::StatusesCount => {
-                let value = &self
+                let value = self
                     .user_info
                     .as_ref()
                     .and_then(|value| value.user_name_info.as_ref())
                     .and_then(|value| value.user_profile_info.as_ref())
-                    .map(|value| &value.statuses_count);
-                todo![]
+                    .map(|value| value.statuses_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
             }
         }
     }

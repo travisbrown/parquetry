@@ -1,11 +1,9 @@
 use codegen::{Block, Scope};
 use parquet::{basic::Type as PhysicalType, schema::types::ColumnDescPtr};
 
-use crate::schema::GenColumn;
-
 use super::{
     error::Error,
-    schema::{GenField, GenSchema, GenType},
+    schema::{GenColumn, GenField, GenSchema, GenType},
 };
 
 pub const WORKSPACE_STRUCT_NAME: &str = "ParquetryWorkspace";
@@ -541,28 +539,63 @@ pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error
     {
         let mut value_path = String::new();
         let mut any_optional = false;
-        for (part, optional) in &gen_column.rust_path {
+        for (index, (part, optional)) in gen_column.rust_path.iter().enumerate() {
+            let last = index == gen_column.rust_path.len() - 1;
+
             if any_optional {
                 if *optional {
-                    value_path.push_str(&format!(".and_then(|value| value.{}.as_ref())", part));
+                    if last && gen_column.mapping.is_copy() {
+                        value_path.push_str(&format!(".and_then(|value| value.{})", part));
+                    } else {
+                        value_path.push_str(&format!(".and_then(|value| value.{}.as_ref())", part));
+                    }
                 } else {
-                    value_path.push_str(&format!(".map(|value| &value.{})", part));
+                    if last && gen_column.mapping.is_copy() {
+                        value_path.push_str(&format!(".map(|value| value.{})", part));
+                    } else {
+                        value_path.push_str(&format!(".map(|value| &value.{})", part));
+                    }
                 }
             } else {
                 value_path.push_str(&format!(".{}", part));
 
                 if *optional {
-                    value_path.push_str(".as_ref()");
+                    if !last || !gen_column.mapping.is_copy() {
+                        value_path.push_str(".as_ref()");
+                    }
+                    any_optional = true;
                 }
-                any_optional = true;
             }
         }
 
-        block.line(format!(
-            "columns::SortColumn::{} => {{ let value = &self{}; todo![] }},",
-            gen_column.variant_name(),
-            value_path
-        ));
+        let mut code = String::new();
+
+        if any_optional {
+            code.push_str("match value {");
+            code.push_str("Some(value) => {");
+            code.push_str("bytes.push(if column.nulls_first { 1 } else { 0 });");
+            code.push_str(&gen_column.mapping.write_bytes());
+            code.push('}');
+            code.push_str("None => { bytes.push(if column.nulls_first { 0 } else { 1 }); }");
+            code.push('}');
+        } else {
+            code.push_str(&gen_column.mapping.write_bytes());
+        }
+        if !any_optional && gen_column.rust_path.len() == 1 && !gen_column.mapping.is_copy() {
+            block.line(format!(
+                "columns::SortColumn::{} => {{ let value = &self{}; {} }},",
+                gen_column.variant_name(),
+                value_path,
+                code,
+            ));
+        } else {
+            block.line(format!(
+                "columns::SortColumn::{} => {{ let value = self{}; {} }},",
+                gen_column.variant_name(),
+                value_path,
+                code,
+            ));
+        }
     }
     Ok(block)
 }

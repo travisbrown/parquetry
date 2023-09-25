@@ -268,7 +268,7 @@ fn schema_to_scope(
             "column",
             "parquetry::Sort<<Self as parquetry::Schema>::SortColumn>",
         )
-        .arg("bytes", "&mut [u8]")
+        .arg("bytes", "&mut Vec<u8>")
         .push_block(code::gen_write_sort_key_bytes_block(schema)?);
 
     base_impl

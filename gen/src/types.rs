@@ -174,6 +174,57 @@ impl TypeMapping {
         }
     }
 
+    pub fn is_copy(&self) -> bool {
+        matches!(
+            self,
+            Self::Bool
+                | Self::I32
+                | Self::I64
+                | Self::U32
+                | Self::U64
+                | Self::F32
+                | Self::F64
+                | Self::DateTime(_)
+                | Self::FixedLengthByteArray(_)
+        )
+    }
+
+    pub fn write_bytes(&self) -> String {
+        let mut code = String::new();
+        match self {
+            Self::Bool => {
+                code.push_str("bytes.push(if column.descending { if value { 0 } else { 1 } } else { if value { 1 } else { 0 } });");
+            }
+            Self::I32 | Self::I64 | Self::U32 | Self::U64 | Self::F32 | Self::F64 => {
+                code.push_str("for b in value.to_be_bytes() {");
+                code.push_str("bytes.push(if column.descending { !b } else { b });");
+                code.push('}');
+            }
+            Self::DateTime(_) => {
+                code.push_str("for b in value.timestamp_micros().to_be_bytes() {");
+                code.push_str("bytes.push(if column.descending { !b } else { b });");
+                code.push('}');
+            }
+            Self::String => {
+                code.push_str("for b in value.as_bytes() {");
+                code.push_str("bytes.push(if column.descending { !b } else { *b });");
+                code.push('}');
+            }
+            Self::ByteArray => {
+                code.push_str("for b in value {");
+                code.push_str("bytes.push(if column.descending { !b } else { *b });");
+                code.push('}');
+            }
+            Self::FixedLengthByteArray(_) => {
+                code.push_str("for b in value {");
+                code.push_str("bytes.push(if column.descending { !b } else { b });");
+                code.push('}');
+            }
+        }
+
+        code
+    }
+
     fn error(name: &str) -> String {
         format!(
             "parquetry::error::Error::InvalidField(\"{}\".to_string())",
