@@ -1113,6 +1113,126 @@ impl User {
         }
     }
 }
+impl User {
+    pub fn new(
+        id: u64,
+        ts: chrono::DateTime<chrono::Utc>,
+        status: Option<i32>,
+        user_info: Option<UserInfo>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        let ts = chrono::SubsecRound::trunc_subsecs(ts, 3);
+        Ok(Self { id, ts, status, user_info })
+    }
+}
+impl UserInfo {
+    pub fn new(
+        screen_name: String,
+        user_name_info: Option<UserNameInfo>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        for (index, byte) in screen_name.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec!["user_info".to_string(), "screen_name".to_string(),],
+                    ),
+                    index,
+                });
+            }
+        }
+        Ok(Self {
+            screen_name,
+            user_name_info,
+        })
+    }
+}
+impl UserNameInfo {
+    pub fn new(
+        name: String,
+        user_profile_info: Option<UserProfileInfo>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        for (index, byte) in name.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec![
+                            "user_info".to_string(), "user_name_info".to_string(), "name"
+                            .to_string(),
+                        ],
+                    ),
+                    index,
+                });
+            }
+        }
+        Ok(Self { name, user_profile_info })
+    }
+}
+impl UserProfileInfo {
+    pub fn new(
+        created_at: chrono::DateTime<chrono::Utc>,
+        location: String,
+        description: String,
+        url: Option<String>,
+        followers_count: i32,
+        friends_count: i32,
+        favourites_count: i32,
+        statuses_count: i32,
+        withheld_in_countries: Option<Vec<String>>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        let created_at = chrono::SubsecRound::trunc_subsecs(created_at, 3);
+        for (index, byte) in location.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec![
+                            "user_info".to_string(), "user_name_info".to_string(),
+                            "user_profile_info".to_string(), "location".to_string(),
+                        ],
+                    ),
+                    index,
+                });
+            }
+        }
+        for (index, byte) in description.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec![
+                            "user_info".to_string(), "user_name_info".to_string(),
+                            "user_profile_info".to_string(), "description".to_string(),
+                        ],
+                    ),
+                    index,
+                });
+            }
+        }
+        if let Some(url) = url.as_ref() {
+            for (index, byte) in url.as_bytes().iter().enumerate() {
+                if *byte == 0 {
+                    return Err(parquetry::error::ValueError::NullByteString {
+                        column_path: parquet::schema::types::ColumnPath::new(
+                            vec![
+                                "user_info".to_string(), "user_name_info".to_string(),
+                                "user_profile_info".to_string(), "url".to_string(),
+                            ],
+                        ),
+                        index,
+                    });
+                }
+            }
+        }
+        Ok(Self {
+            created_at,
+            location,
+            description,
+            url,
+            followers_count,
+            friends_count,
+            favourites_count,
+            statuses_count,
+            withheld_in_countries,
+        })
+    }
+}
 #[derive(Default)]
 struct ParquetryWorkspace {
     values_0000: Vec<i64>,
@@ -1178,59 +1298,91 @@ impl ParquetryWorkspace {
 mod test {
     impl quickcheck::Arbitrary for super::User {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                id: <_>::arbitrary(g),
-                ts: chrono::SubsecRound::trunc_subsecs(
-                    chrono::TimeZone::timestamp_millis_opt(
-                            &chrono::Utc,
-                            gen_valid_timestamp_milli(g),
-                        )
-                        .single()
-                        .expect("Arbitrary instance for DateTime<Utc> is invalid"),
-                    3,
-                ),
-                status: <_>::arbitrary(g),
-                user_info: <_>::arbitrary(g),
-            }
+            Self::new(
+                    <_>::arbitrary(g),
+                    chrono::SubsecRound::trunc_subsecs(
+                        chrono::TimeZone::timestamp_millis_opt(
+                                &chrono::Utc,
+                                gen_valid_timestamp_milli(g),
+                            )
+                            .single()
+                            .expect(
+                                "Invalid quickcheck::Arbitrary instance for DateTime<Utc>",
+                            ),
+                        3,
+                    ),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for User")
         }
     }
     impl quickcheck::Arbitrary for super::UserInfo {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                screen_name: <_>::arbitrary(g),
-                user_name_info: <_>::arbitrary(g),
-            }
+            Self::new(
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for UserInfo")
         }
     }
     impl quickcheck::Arbitrary for super::UserNameInfo {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                name: <_>::arbitrary(g),
-                user_profile_info: <_>::arbitrary(g),
-            }
+            Self::new(
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for UserNameInfo")
         }
     }
     impl quickcheck::Arbitrary for super::UserProfileInfo {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                created_at: chrono::SubsecRound::trunc_subsecs(
-                    chrono::TimeZone::timestamp_millis_opt(
-                            &chrono::Utc,
-                            gen_valid_timestamp_milli(g),
-                        )
-                        .single()
-                        .expect("Arbitrary instance for DateTime<Utc> is invalid"),
-                    3,
-                ),
-                location: <_>::arbitrary(g),
-                description: <_>::arbitrary(g),
-                url: <_>::arbitrary(g),
-                followers_count: <_>::arbitrary(g),
-                friends_count: <_>::arbitrary(g),
-                favourites_count: <_>::arbitrary(g),
-                statuses_count: <_>::arbitrary(g),
-                withheld_in_countries: <_>::arbitrary(g),
-            }
+            Self::new(
+                    chrono::SubsecRound::trunc_subsecs(
+                        chrono::TimeZone::timestamp_millis_opt(
+                                &chrono::Utc,
+                                gen_valid_timestamp_milli(g),
+                            )
+                            .single()
+                            .expect(
+                                "Invalid quickcheck::Arbitrary instance for DateTime<Utc>",
+                            ),
+                        3,
+                    ),
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    {
+                        let optional: Option<()> = <_>::arbitrary(g);
+                        optional
+                            .map(|_| {
+                                let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                                value.retain(|char| char != ' ');
+                                value
+                            })
+                    },
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for UserProfileInfo")
         }
     }
     fn round_trip_write_impl(groups: Vec<Vec<super::User>>) -> bool {

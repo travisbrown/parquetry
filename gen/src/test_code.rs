@@ -16,17 +16,19 @@ pub fn gen_test_code(test_module: &mut Module, schema: &GenSchema) -> Result<(),
             .arg("g", "&mut quickcheck::Gen")
             .ret("Self");
 
-        arbitrary_fn.line("Self {");
+        arbitrary_fn.line("Self::new(");
 
         for gen_field in gen_struct.fields {
             arbitrary_fn.line(format!(
-                "{}: {},",
-                gen_field.name,
+                "{},",
                 arbitrary_value(&gen_field.gen_type, gen_field.optional)
             ));
         }
 
-        arbitrary_fn.line("}");
+        arbitrary_fn.line(format!(
+            ").expect(\"Invalid quickcheck::Arbitrary instance for {}\")",
+            gen_struct.type_name
+        ));
     }
 
     for line in gen_round_trip_write(&schema.type_name) {
@@ -72,7 +74,26 @@ fn gen_valid_timestamp_block(date_time_unit: &str) -> Block {
     block
 }
 
-const INVALID_ARBITRARY_INSTANCE_MESSAGE: &str = "Arbitrary instance for DateTime<Utc> is invalid";
+fn gen_valid_string(optional: bool) -> String {
+    let mut value = String::new();
+    value.push('{');
+    value.push_str("let mut value: String = quickcheck::Arbitrary::arbitrary(g);");
+    value.push_str("value.retain(|char| char != '\0');");
+    value.push_str("value");
+    value.push('}');
+
+    if optional {
+        format!(
+            "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {}) }}",
+            value
+        )
+    } else {
+        value
+    }
+}
+
+const INVALID_ARBITRARY_INSTANCE_MESSAGE: &str =
+    "Invalid quickcheck::Arbitrary instance for DateTime<Utc>";
 
 fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
     let method_name = if date_time_unit == "milli" {
@@ -129,6 +150,7 @@ fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
                     format!("match {}::arbitrary(g) {{ value if value.is_nan() => 0.0, value => value }}", mapping.rust_type_name())
                 }
             }
+            TypeMapping::String => gen_valid_string(optional),
             _ => "<_>::arbitrary(g)".to_string(),
         },
         GenType::List { .. } => "<_>::arbitrary(g)".to_string(),

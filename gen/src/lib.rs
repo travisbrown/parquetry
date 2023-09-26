@@ -289,6 +289,12 @@ fn schema_to_scope(
         .ret("Result<usize, parquetry::error::Error>")
         .push_block(code::gen_fill_workspace_block(schema)?);
 
+    for gen_struct in schema.structs() {
+        let base_impl = scope.new_impl(&gen_struct.type_name);
+
+        code::gen_constructor(&gen_struct, base_impl.new_fn("new"))?;
+    }
+
     code::add_workspace_struct(&mut scope, descriptor.columns())?;
 
     if schema.config.tests {

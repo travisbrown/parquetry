@@ -1,12 +1,88 @@
-use codegen::{Block, Scope};
+use codegen::{Block, Function, Scope};
 use parquet::{basic::Type as PhysicalType, schema::types::ColumnDescPtr};
 
 use super::{
     error::Error,
-    schema::{GenColumn, GenField, GenSchema, GenType},
+    schema::{GenColumn, GenField, GenSchema, GenStruct, GenType},
+    types::{DateTimeUnit, TypeMapping},
 };
 
 pub const WORKSPACE_STRUCT_NAME: &str = "ParquetryWorkspace";
+
+pub fn gen_constructor(gen_struct: &GenStruct, function: &mut Function) -> Result<(), Error> {
+    function
+        .vis("pub")
+        .ret("Result<Self, parquetry::error::ValueError>");
+
+    for field in &gen_struct.fields {
+        function.arg(&field.name, field.type_name());
+
+        if let GenType::Column(column) = &field.gen_type {
+            match column.mapping {
+                TypeMapping::DateTime(date_time_unit) => {
+                    let digits = match date_time_unit {
+                        DateTimeUnit::Millis => 3,
+                        DateTimeUnit::Micros => 6,
+                    };
+
+                    if field.optional {
+                        function.line(format!(
+                            "let {} = {}.map(|value| chrono::SubsecRound::trunc_subsecs(value, {}));",
+                            field.name, field.name, digits));
+                    } else {
+                        function.line(format!(
+                            "let {} = chrono::SubsecRound::trunc_subsecs({}, {});",
+                            field.name, field.name, digits
+                        ));
+                    }
+                }
+                TypeMapping::String => {
+                    let mut column_path_code = String::new();
+                    column_path_code.push_str("parquet::schema::types::ColumnPath::new(vec![");
+                    for part in column.descriptor.path().parts() {
+                        column_path_code.push_str(&format!("\"{}\".to_string(), ", part));
+                    }
+                    column_path_code.push_str("])");
+
+                    if field.optional {
+                        function.line(format!(
+                            "if let Some({}) = {}.as_ref() {{",
+                            field.name, field.name
+                        ));
+                    }
+
+                    function.line(format!(
+                        "for (index, byte) in {}.as_bytes().iter().enumerate() {{",
+                        field.name
+                    ));
+                    function.line("if *byte == 0 {");
+                    function.line(format!(
+                        "return Err(parquetry::error::ValueError::NullByteString {{ column_path: {}, index }});",
+                        column_path_code
+                    ));
+
+                    if field.optional {
+                        function.line("}");
+                    }
+
+                    function.line("}");
+                    function.line("}");
+                }
+                _ => {}
+            }
+        }
+    }
+
+    function.line("Ok(Self {");
+
+    for field in &gen_struct.fields {
+        function.line(format!("{}, ", field.name));
+    }
+
+    function.line("})");
+
+    Ok(())
+}
 
 pub fn gen_field_writer_code(
     gen_field: &GenField,
