@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use parquet::{
+    basic::LogicalType,
     file::{
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
@@ -124,6 +125,8 @@ pub trait Schema: Sized {
             if columns.iter().any(|column| {
                 descriptors[column.column.index()].physical_type()
                     == parquet::basic::Type::BYTE_ARRAY
+                    && descriptors[column.column.index()].logical_type()
+                        != Some(LogicalType::String)
             }) {
                 Err(error::SortKeyError::NonSingletonByteArrayKey)
             } else {

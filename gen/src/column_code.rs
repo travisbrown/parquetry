@@ -105,21 +105,19 @@ impl ColumnInfoBranch {
         if path.len() == 1 {
             self.0
                 .push((path[0].clone(), ColumnInfoTree::Leaf(gen_column.clone())));
-        } else {
-            if let Some(next) = path.pop() {
-                let tree = match self.get_branch(&next) {
-                    Some(existing) => existing,
-                    None => {
-                        self.0.push((
-                            next.clone(),
-                            ColumnInfoTree::Branch(ColumnInfoBranch(vec![])),
-                        ));
-                        self.get_branch(&next).unwrap()
-                    }
-                };
+        } else if let Some(next) = path.pop() {
+            let tree = match self.get_branch(&next) {
+                Some(existing) => existing,
+                None => {
+                    self.0.push((
+                        next.clone(),
+                        ColumnInfoTree::Branch(ColumnInfoBranch(vec![])),
+                    ));
+                    self.get_branch(&next).unwrap()
+                }
+            };
 
-                tree.add(path, gen_column)
-            }
+            tree.add(path, gen_column)
         }
     }
 }

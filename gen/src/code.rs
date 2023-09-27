@@ -625,12 +625,10 @@ pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error
                     } else {
                         value_path.push_str(&format!(".and_then(|value| value.{}.as_ref())", part));
                     }
+                } else if last && gen_column.mapping.is_copy() {
+                    value_path.push_str(&format!(".map(|value| value.{})", part));
                 } else {
-                    if last && gen_column.mapping.is_copy() {
-                        value_path.push_str(&format!(".map(|value| value.{})", part));
-                    } else {
-                        value_path.push_str(&format!(".map(|value| &value.{})", part));
-                    }
+                    value_path.push_str(&format!(".map(|value| &value.{})", part));
                 }
             } else {
                 value_path.push_str(&format!(".{}", part));
