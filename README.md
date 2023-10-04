@@ -191,6 +191,13 @@ In most of these cases the problems should be immediately obvious, since the gen
 It wouldn't be hard to check for these collisions and provide better errors, or to allow more user control over naming to avoid these issues,
 but this hasn't been a priority for me.
 
+### Constructors
+
+The generated code includes `fn new` constructors for each struct that will truncate the precision of any `DateTime<Utc>` to the number of subsecond digits
+supported by the column representation. These constructors will also check whether any string arguments contain null bytes, and will return an error if they do.
+
+If you don't want either behavior, you can construct the structs manually, as all fields are always public.
+
 ### Serde instances
 
 By default the generated code will include derived Serde instances for serialization.

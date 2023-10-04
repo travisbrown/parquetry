@@ -31,9 +31,9 @@ const SCHEMA_SOURCE: &str = "message user {
     }
 }";
 lazy_static::lazy_static! {
-    pub static ref SCHEMA : parquet::schema::types::TypePtr =
-    std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
-    .unwrap());
+    pub static ref SCHEMA : parquet::schema::types::SchemaDescPtr =
+    std::sync::Arc::new(parquet::schema::types::SchemaDescriptor::new(std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
+    .unwrap())));
 }
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct User {
@@ -67,6 +67,41 @@ pub struct UserProfileInfo {
     pub withheld_in_countries: Option<Vec<String>>,
 }
 pub mod columns {
+    #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+    pub enum SortColumn {
+        Id,
+        Ts,
+        Status,
+        ScreenName,
+        Name,
+        CreatedAt,
+        Location,
+        Description,
+        Url,
+        FollowersCount,
+        FriendsCount,
+        FavouritesCount,
+        StatusesCount,
+    }
+    impl parquetry::SortColumn for SortColumn {
+        fn index(&self) -> usize {
+            match self {
+                Self::Id => 0,
+                Self::Ts => 1,
+                Self::Status => 2,
+                Self::ScreenName => 3,
+                Self::Name => 4,
+                Self::CreatedAt => 5,
+                Self::Location => 6,
+                Self::Description => 7,
+                Self::Url => 8,
+                Self::FollowersCount => 9,
+                Self::FriendsCount => 10,
+                Self::FavouritesCount => 11,
+                Self::StatusesCount => 12,
+            }
+        }
+    }
     pub const ID: parquetry::ColumnInfo = parquetry::ColumnInfo {
         index: 0,
         path: &["id"],
@@ -172,393 +207,21 @@ pub mod columns {
         }
     }
 }
-#[derive(Default)]
-struct ParquetryWorkspace {
-    values_0000: Vec<i64>,
-    values_0001: Vec<i64>,
-    values_0002: Vec<i32>,
-    def_levels_0002: Vec<i16>,
-    values_0003: Vec<parquet::data_type::ByteArray>,
-    def_levels_0003: Vec<i16>,
-    values_0004: Vec<parquet::data_type::ByteArray>,
-    def_levels_0004: Vec<i16>,
-    values_0005: Vec<i64>,
-    def_levels_0005: Vec<i16>,
-    values_0006: Vec<parquet::data_type::ByteArray>,
-    def_levels_0006: Vec<i16>,
-    values_0007: Vec<parquet::data_type::ByteArray>,
-    def_levels_0007: Vec<i16>,
-    values_0008: Vec<parquet::data_type::ByteArray>,
-    def_levels_0008: Vec<i16>,
-    values_0009: Vec<i32>,
-    def_levels_0009: Vec<i16>,
-    values_0010: Vec<i32>,
-    def_levels_0010: Vec<i16>,
-    values_0011: Vec<i32>,
-    def_levels_0011: Vec<i16>,
-    values_0012: Vec<i32>,
-    def_levels_0012: Vec<i16>,
-    values_0013: Vec<parquet::data_type::ByteArray>,
-    def_levels_0013: Vec<i16>,
-    rep_levels_0013: Vec<i16>,
-}
-impl ParquetryWorkspace {
-    fn clear(&mut self) {
-        self.values_0000.clear();
-        self.values_0001.clear();
-        self.values_0002.clear();
-        self.def_levels_0002.clear();
-        self.values_0003.clear();
-        self.def_levels_0003.clear();
-        self.values_0004.clear();
-        self.def_levels_0004.clear();
-        self.values_0005.clear();
-        self.def_levels_0005.clear();
-        self.values_0006.clear();
-        self.def_levels_0006.clear();
-        self.values_0007.clear();
-        self.def_levels_0007.clear();
-        self.values_0008.clear();
-        self.def_levels_0008.clear();
-        self.values_0009.clear();
-        self.def_levels_0009.clear();
-        self.values_0010.clear();
-        self.def_levels_0010.clear();
-        self.values_0011.clear();
-        self.def_levels_0011.clear();
-        self.values_0012.clear();
-        self.def_levels_0012.clear();
-        self.values_0013.clear();
-        self.def_levels_0013.clear();
-        self.rep_levels_0013.clear();
-    }
-}
-impl User {
-    fn write_with_workspace<W: std::io::Write + Send>(
-        file_writer: &mut parquet::file::writer::SerializedFileWriter<W>,
-        workspace: &mut ParquetryWorkspace,
-    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
-        {
-            let mut row_group_writer = file_writer.next_row_group()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField("id".to_string()))?;
-            column_writer
-                .typed::<parquet::data_type::Int64Type>()
-                .write_batch(&workspace.values_0000, None, None)?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField("ts".to_string()))?;
-            column_writer
-                .typed::<parquet::data_type::Int64Type>()
-                .write_batch(&workspace.values_0001, None, None)?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "status".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::Int32Type>()
-                .write_batch(
-                    &workspace.values_0002,
-                    Some(&workspace.def_levels_0002),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "screen_name".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
-                .write_batch(
-                    &workspace.values_0003,
-                    Some(&workspace.def_levels_0003),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "name".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
-                .write_batch(
-                    &workspace.values_0004,
-                    Some(&workspace.def_levels_0004),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "created_at".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::Int64Type>()
-                .write_batch(
-                    &workspace.values_0005,
-                    Some(&workspace.def_levels_0005),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "location".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
-                .write_batch(
-                    &workspace.values_0006,
-                    Some(&workspace.def_levels_0006),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "description".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
-                .write_batch(
-                    &workspace.values_0007,
-                    Some(&workspace.def_levels_0007),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "url".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
-                .write_batch(
-                    &workspace.values_0008,
-                    Some(&workspace.def_levels_0008),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "followers_count".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::Int32Type>()
-                .write_batch(
-                    &workspace.values_0009,
-                    Some(&workspace.def_levels_0009),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "friends_count".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::Int32Type>()
-                .write_batch(
-                    &workspace.values_0010,
-                    Some(&workspace.def_levels_0010),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "favourites_count".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::Int32Type>()
-                .write_batch(
-                    &workspace.values_0011,
-                    Some(&workspace.def_levels_0011),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "statuses_count".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::Int32Type>()
-                .write_batch(
-                    &workspace.values_0012,
-                    Some(&workspace.def_levels_0012),
-                    None,
-                )?;
-            column_writer.close()?;
-            let mut column_writer = row_group_writer
-                .next_column()?
-                .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "element".to_string(),
-                ))?;
-            column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
-                .write_batch(
-                    &workspace.values_0013,
-                    Some(&workspace.def_levels_0013),
-                    Some(&workspace.rep_levels_0013),
-                )?;
-            column_writer.close()?;
-            workspace.clear();
-            Ok(row_group_writer.close()?)
-        }
-    }
-    fn fill_workspace(
-        workspace: &mut ParquetryWorkspace,
-        group: &[Self],
-    ) -> Result<usize, parquetry::error::Error> {
-        {
-            let mut written_count_ = 0;
-            for User { id, ts, status, user_info } in group {
-                workspace.values_0000.push(*id as i64);
-                workspace.values_0001.push(ts.timestamp_millis());
-                match status {
-                    Some(status) => {
-                        workspace.values_0002.push(*status);
-                        workspace.def_levels_0002.push(1);
-                    }
-                    None => {
-                        workspace.def_levels_0002.push(0);
-                    }
-                }
-                match user_info {
-                    Some(UserInfo { screen_name, user_name_info }) => {
-                        workspace.values_0003.push(screen_name.as_str().into());
-                        workspace.def_levels_0003.push(1);
-                        match user_name_info {
-                            Some(UserNameInfo { name, user_profile_info }) => {
-                                workspace.values_0004.push(name.as_str().into());
-                                workspace.def_levels_0004.push(2);
-                                match user_profile_info {
-                                    Some(
-                                        UserProfileInfo {
-                                            created_at,
-                                            location,
-                                            description,
-                                            url,
-                                            followers_count,
-                                            friends_count,
-                                            favourites_count,
-                                            statuses_count,
-                                            withheld_in_countries,
-                                        },
-                                    ) => {
-                                        workspace.values_0005.push(created_at.timestamp_millis());
-                                        workspace.def_levels_0005.push(3);
-                                        workspace.values_0006.push(location.as_str().into());
-                                        workspace.def_levels_0006.push(3);
-                                        workspace.values_0007.push(description.as_str().into());
-                                        workspace.def_levels_0007.push(3);
-                                        match url {
-                                            Some(url) => {
-                                                workspace.values_0008.push(url.as_str().into());
-                                                workspace.def_levels_0008.push(4);
-                                            }
-                                            None => {
-                                                workspace.def_levels_0008.push(3);
-                                            }
-                                        }
-                                        workspace.values_0009.push(*followers_count);
-                                        workspace.def_levels_0009.push(3);
-                                        workspace.values_0010.push(*friends_count);
-                                        workspace.def_levels_0010.push(3);
-                                        workspace.values_0011.push(*favourites_count);
-                                        workspace.def_levels_0011.push(3);
-                                        workspace.values_0012.push(*statuses_count);
-                                        workspace.def_levels_0012.push(3);
-                                        match withheld_in_countries {
-                                            Some(withheld_in_countries) => {
-                                                if withheld_in_countries.is_empty() {
-                                                    workspace.def_levels_0013.push(4);
-                                                    workspace.rep_levels_0013.push(0);
-                                                } else {
-                                                    let mut first = true;
-                                                    for element in withheld_in_countries {
-                                                        if first {
-                                                            workspace.values_0013.push(element.as_str().into());
-                                                            workspace.def_levels_0013.push(5);
-                                                            workspace.rep_levels_0013.push(0);
-                                                            first = false;
-                                                        } else {
-                                                            workspace.values_0013.push(element.as_str().into());
-                                                            workspace.def_levels_0013.push(5);
-                                                            workspace.rep_levels_0013.push(1);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            None => {
-                                                workspace.def_levels_0013.push(3);
-                                                workspace.rep_levels_0013.push(0);
-                                            }
-                                        }
-                                    }
-                                    None => {
-                                        workspace.def_levels_0005.push(2);
-                                        workspace.def_levels_0006.push(2);
-                                        workspace.def_levels_0007.push(2);
-                                        workspace.def_levels_0008.push(2);
-                                        workspace.def_levels_0009.push(2);
-                                        workspace.def_levels_0010.push(2);
-                                        workspace.def_levels_0011.push(2);
-                                        workspace.def_levels_0012.push(2);
-                                        workspace.def_levels_0013.push(2);
-                                        workspace.rep_levels_0013.push(0);
-                                    }
-                                }
-                            }
-                            None => {
-                                workspace.def_levels_0004.push(1);
-                                workspace.def_levels_0005.push(1);
-                                workspace.def_levels_0006.push(1);
-                                workspace.def_levels_0007.push(1);
-                                workspace.def_levels_0008.push(1);
-                                workspace.def_levels_0009.push(1);
-                                workspace.def_levels_0010.push(1);
-                                workspace.def_levels_0011.push(1);
-                                workspace.def_levels_0012.push(1);
-                                workspace.def_levels_0013.push(1);
-                                workspace.rep_levels_0013.push(0);
-                            }
-                        }
-                    }
-                    None => {
-                        workspace.def_levels_0003.push(0);
-                        workspace.def_levels_0004.push(0);
-                        workspace.def_levels_0005.push(0);
-                        workspace.def_levels_0006.push(0);
-                        workspace.def_levels_0007.push(0);
-                        workspace.def_levels_0008.push(0);
-                        workspace.def_levels_0009.push(0);
-                        workspace.def_levels_0010.push(0);
-                        workspace.def_levels_0011.push(0);
-                        workspace.def_levels_0012.push(0);
-                        workspace.def_levels_0013.push(0);
-                        workspace.rep_levels_0013.push(0);
-                    }
-                }
-                written_count_ += 1;
-            }
-            Ok(written_count_)
-        }
-    }
-}
 impl parquetry::Schema for User {
+    type SortColumn = columns::SortColumn;
+    fn sort_key_value(&self, sort_key: parquetry::SortKey<Self::SortColumn>) -> Vec<u8> {
+        {
+            let mut bytes = vec![];
+            for column in sort_key.columns() {
+                self.write_sort_key_bytes(column, &mut bytes);
+            }
+            bytes
+        }
+    }
     fn source() -> &'static str {
         SCHEMA_SOURCE
     }
-    fn schema() -> parquet::schema::types::TypePtr {
+    fn schema() -> parquet::schema::types::SchemaDescPtr {
         SCHEMA.clone()
     }
     fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
@@ -569,7 +232,7 @@ impl parquetry::Schema for User {
         {
             let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
                 writer,
-                SCHEMA.clone(),
+                SCHEMA.root_schema_ptr(),
                 std::sync::Arc::new(properties),
             )?;
             let mut workspace = ParquetryWorkspace::default();
@@ -911,63 +574,820 @@ impl TryFrom<parquet::record::Row> for User {
         }
     }
 }
+impl User {
+    fn write_sort_key_bytes(
+        &self,
+        column: parquetry::Sort<<Self as parquetry::Schema>::SortColumn>,
+        bytes: &mut Vec<u8>,
+    ) {
+        match column.column {
+            columns::SortColumn::Id => {
+                let value = self.id;
+                for b in value.to_be_bytes() {
+                    bytes.push(if column.descending { !b } else { b });
+                }
+            }
+            columns::SortColumn::Ts => {
+                let value = self.ts;
+                for b in value.timestamp_micros().to_be_bytes() {
+                    bytes.push(if column.descending { !b } else { b });
+                }
+            }
+            columns::SortColumn::Status => {
+                let value = self.status;
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::ScreenName => {
+                let value = self.user_info.as_ref().map(|value| &value.screen_name);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                        bytes.push(if column.descending { u8::MAX } else { b'\0' });
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::Name => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .map(|value| &value.name);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                        bytes.push(if column.descending { u8::MAX } else { b'\0' });
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::CreatedAt => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| value.created_at);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.timestamp_micros().to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::Location => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.location);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                        bytes.push(if column.descending { u8::MAX } else { b'\0' });
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::Description => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| &value.description);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                        bytes.push(if column.descending { u8::MAX } else { b'\0' });
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::Url => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .and_then(|value| value.url.as_ref());
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.as_bytes() {
+                            bytes.push(if column.descending { !b } else { *b });
+                        }
+                        bytes.push(if column.descending { u8::MAX } else { b'\0' });
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::FollowersCount => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| value.followers_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::FriendsCount => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| value.friends_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::FavouritesCount => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| value.favourites_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::StatusesCount => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .map(|value| value.statuses_count);
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in value.to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+        }
+    }
+    fn write_with_workspace<W: std::io::Write + Send>(
+        file_writer: &mut parquet::file::writer::SerializedFileWriter<W>,
+        workspace: &mut ParquetryWorkspace,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
+        {
+            let mut row_group_writer = file_writer.next_row_group()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField("id".to_string()))?;
+            column_writer
+                .typed::<parquet::data_type::Int64Type>()
+                .write_batch(&workspace.values_0000, None, None)?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField("ts".to_string()))?;
+            column_writer
+                .typed::<parquet::data_type::Int64Type>()
+                .write_batch(&workspace.values_0001, None, None)?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "status".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0002,
+                    Some(&workspace.def_levels_0002),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "screen_name".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0003,
+                    Some(&workspace.def_levels_0003),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "name".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0004,
+                    Some(&workspace.def_levels_0004),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "created_at".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int64Type>()
+                .write_batch(
+                    &workspace.values_0005,
+                    Some(&workspace.def_levels_0005),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "location".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0006,
+                    Some(&workspace.def_levels_0006),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "description".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0007,
+                    Some(&workspace.def_levels_0007),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "url".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0008,
+                    Some(&workspace.def_levels_0008),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "followers_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0009,
+                    Some(&workspace.def_levels_0009),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "friends_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0010,
+                    Some(&workspace.def_levels_0010),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "favourites_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0011,
+                    Some(&workspace.def_levels_0011),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "statuses_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0012,
+                    Some(&workspace.def_levels_0012),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "element".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::ByteArrayType>()
+                .write_batch(
+                    &workspace.values_0013,
+                    Some(&workspace.def_levels_0013),
+                    Some(&workspace.rep_levels_0013),
+                )?;
+            column_writer.close()?;
+            workspace.clear();
+            Ok(row_group_writer.close()?)
+        }
+    }
+    fn fill_workspace(
+        workspace: &mut ParquetryWorkspace,
+        group: &[Self],
+    ) -> Result<usize, parquetry::error::Error> {
+        {
+            let mut written_count_ = 0;
+            for User { id, ts, status, user_info } in group {
+                workspace.values_0000.push(*id as i64);
+                workspace.values_0001.push(ts.timestamp_millis());
+                match status {
+                    Some(status) => {
+                        workspace.values_0002.push(*status);
+                        workspace.def_levels_0002.push(1);
+                    }
+                    None => {
+                        workspace.def_levels_0002.push(0);
+                    }
+                }
+                match user_info {
+                    Some(UserInfo { screen_name, user_name_info }) => {
+                        workspace.values_0003.push(screen_name.as_str().into());
+                        workspace.def_levels_0003.push(1);
+                        match user_name_info {
+                            Some(UserNameInfo { name, user_profile_info }) => {
+                                workspace.values_0004.push(name.as_str().into());
+                                workspace.def_levels_0004.push(2);
+                                match user_profile_info {
+                                    Some(
+                                        UserProfileInfo {
+                                            created_at,
+                                            location,
+                                            description,
+                                            url,
+                                            followers_count,
+                                            friends_count,
+                                            favourites_count,
+                                            statuses_count,
+                                            withheld_in_countries,
+                                        },
+                                    ) => {
+                                        workspace.values_0005.push(created_at.timestamp_millis());
+                                        workspace.def_levels_0005.push(3);
+                                        workspace.values_0006.push(location.as_str().into());
+                                        workspace.def_levels_0006.push(3);
+                                        workspace.values_0007.push(description.as_str().into());
+                                        workspace.def_levels_0007.push(3);
+                                        match url {
+                                            Some(url) => {
+                                                workspace.values_0008.push(url.as_str().into());
+                                                workspace.def_levels_0008.push(4);
+                                            }
+                                            None => {
+                                                workspace.def_levels_0008.push(3);
+                                            }
+                                        }
+                                        workspace.values_0009.push(*followers_count);
+                                        workspace.def_levels_0009.push(3);
+                                        workspace.values_0010.push(*friends_count);
+                                        workspace.def_levels_0010.push(3);
+                                        workspace.values_0011.push(*favourites_count);
+                                        workspace.def_levels_0011.push(3);
+                                        workspace.values_0012.push(*statuses_count);
+                                        workspace.def_levels_0012.push(3);
+                                        match withheld_in_countries {
+                                            Some(withheld_in_countries) => {
+                                                if withheld_in_countries.is_empty() {
+                                                    workspace.def_levels_0013.push(4);
+                                                    workspace.rep_levels_0013.push(0);
+                                                } else {
+                                                    let mut first = true;
+                                                    for element in withheld_in_countries {
+                                                        if first {
+                                                            workspace.values_0013.push(element.as_str().into());
+                                                            workspace.def_levels_0013.push(5);
+                                                            workspace.rep_levels_0013.push(0);
+                                                            first = false;
+                                                        } else {
+                                                            workspace.values_0013.push(element.as_str().into());
+                                                            workspace.def_levels_0013.push(5);
+                                                            workspace.rep_levels_0013.push(1);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            None => {
+                                                workspace.def_levels_0013.push(3);
+                                                workspace.rep_levels_0013.push(0);
+                                            }
+                                        }
+                                    }
+                                    None => {
+                                        workspace.def_levels_0005.push(2);
+                                        workspace.def_levels_0006.push(2);
+                                        workspace.def_levels_0007.push(2);
+                                        workspace.def_levels_0008.push(2);
+                                        workspace.def_levels_0009.push(2);
+                                        workspace.def_levels_0010.push(2);
+                                        workspace.def_levels_0011.push(2);
+                                        workspace.def_levels_0012.push(2);
+                                        workspace.def_levels_0013.push(2);
+                                        workspace.rep_levels_0013.push(0);
+                                    }
+                                }
+                            }
+                            None => {
+                                workspace.def_levels_0004.push(1);
+                                workspace.def_levels_0005.push(1);
+                                workspace.def_levels_0006.push(1);
+                                workspace.def_levels_0007.push(1);
+                                workspace.def_levels_0008.push(1);
+                                workspace.def_levels_0009.push(1);
+                                workspace.def_levels_0010.push(1);
+                                workspace.def_levels_0011.push(1);
+                                workspace.def_levels_0012.push(1);
+                                workspace.def_levels_0013.push(1);
+                                workspace.rep_levels_0013.push(0);
+                            }
+                        }
+                    }
+                    None => {
+                        workspace.def_levels_0003.push(0);
+                        workspace.def_levels_0004.push(0);
+                        workspace.def_levels_0005.push(0);
+                        workspace.def_levels_0006.push(0);
+                        workspace.def_levels_0007.push(0);
+                        workspace.def_levels_0008.push(0);
+                        workspace.def_levels_0009.push(0);
+                        workspace.def_levels_0010.push(0);
+                        workspace.def_levels_0011.push(0);
+                        workspace.def_levels_0012.push(0);
+                        workspace.def_levels_0013.push(0);
+                        workspace.rep_levels_0013.push(0);
+                    }
+                }
+                written_count_ += 1;
+            }
+            Ok(written_count_)
+        }
+    }
+}
+impl User {
+    pub fn new(
+        id: u64,
+        ts: chrono::DateTime<chrono::Utc>,
+        status: Option<i32>,
+        user_info: Option<UserInfo>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        let ts = chrono::SubsecRound::trunc_subsecs(ts, 3);
+        Ok(Self { id, ts, status, user_info })
+    }
+}
+impl UserInfo {
+    pub fn new(
+        screen_name: String,
+        user_name_info: Option<UserNameInfo>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        for (index, byte) in screen_name.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec!["user_info".to_string(), "screen_name".to_string(),],
+                    ),
+                    index,
+                });
+            }
+        }
+        Ok(Self {
+            screen_name,
+            user_name_info,
+        })
+    }
+}
+impl UserNameInfo {
+    pub fn new(
+        name: String,
+        user_profile_info: Option<UserProfileInfo>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        for (index, byte) in name.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec![
+                            "user_info".to_string(), "user_name_info".to_string(), "name"
+                            .to_string(),
+                        ],
+                    ),
+                    index,
+                });
+            }
+        }
+        Ok(Self { name, user_profile_info })
+    }
+}
+impl UserProfileInfo {
+    pub fn new(
+        created_at: chrono::DateTime<chrono::Utc>,
+        location: String,
+        description: String,
+        url: Option<String>,
+        followers_count: i32,
+        friends_count: i32,
+        favourites_count: i32,
+        statuses_count: i32,
+        withheld_in_countries: Option<Vec<String>>,
+    ) -> Result<Self, parquetry::error::ValueError> {
+        let created_at = chrono::SubsecRound::trunc_subsecs(created_at, 3);
+        for (index, byte) in location.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec![
+                            "user_info".to_string(), "user_name_info".to_string(),
+                            "user_profile_info".to_string(), "location".to_string(),
+                        ],
+                    ),
+                    index,
+                });
+            }
+        }
+        for (index, byte) in description.as_bytes().iter().enumerate() {
+            if *byte == 0 {
+                return Err(parquetry::error::ValueError::NullByteString {
+                    column_path: parquet::schema::types::ColumnPath::new(
+                        vec![
+                            "user_info".to_string(), "user_name_info".to_string(),
+                            "user_profile_info".to_string(), "description".to_string(),
+                        ],
+                    ),
+                    index,
+                });
+            }
+        }
+        if let Some(url) = url.as_ref() {
+            for (index, byte) in url.as_bytes().iter().enumerate() {
+                if *byte == 0 {
+                    return Err(parquetry::error::ValueError::NullByteString {
+                        column_path: parquet::schema::types::ColumnPath::new(
+                            vec![
+                                "user_info".to_string(), "user_name_info".to_string(),
+                                "user_profile_info".to_string(), "url".to_string(),
+                            ],
+                        ),
+                        index,
+                    });
+                }
+            }
+        }
+        Ok(Self {
+            created_at,
+            location,
+            description,
+            url,
+            followers_count,
+            friends_count,
+            favourites_count,
+            statuses_count,
+            withheld_in_countries,
+        })
+    }
+}
+#[derive(Default)]
+struct ParquetryWorkspace {
+    values_0000: Vec<i64>,
+    values_0001: Vec<i64>,
+    values_0002: Vec<i32>,
+    def_levels_0002: Vec<i16>,
+    values_0003: Vec<parquet::data_type::ByteArray>,
+    def_levels_0003: Vec<i16>,
+    values_0004: Vec<parquet::data_type::ByteArray>,
+    def_levels_0004: Vec<i16>,
+    values_0005: Vec<i64>,
+    def_levels_0005: Vec<i16>,
+    values_0006: Vec<parquet::data_type::ByteArray>,
+    def_levels_0006: Vec<i16>,
+    values_0007: Vec<parquet::data_type::ByteArray>,
+    def_levels_0007: Vec<i16>,
+    values_0008: Vec<parquet::data_type::ByteArray>,
+    def_levels_0008: Vec<i16>,
+    values_0009: Vec<i32>,
+    def_levels_0009: Vec<i16>,
+    values_0010: Vec<i32>,
+    def_levels_0010: Vec<i16>,
+    values_0011: Vec<i32>,
+    def_levels_0011: Vec<i16>,
+    values_0012: Vec<i32>,
+    def_levels_0012: Vec<i16>,
+    values_0013: Vec<parquet::data_type::ByteArray>,
+    def_levels_0013: Vec<i16>,
+    rep_levels_0013: Vec<i16>,
+}
+impl ParquetryWorkspace {
+    fn clear(&mut self) {
+        self.values_0000.clear();
+        self.values_0001.clear();
+        self.values_0002.clear();
+        self.def_levels_0002.clear();
+        self.values_0003.clear();
+        self.def_levels_0003.clear();
+        self.values_0004.clear();
+        self.def_levels_0004.clear();
+        self.values_0005.clear();
+        self.def_levels_0005.clear();
+        self.values_0006.clear();
+        self.def_levels_0006.clear();
+        self.values_0007.clear();
+        self.def_levels_0007.clear();
+        self.values_0008.clear();
+        self.def_levels_0008.clear();
+        self.values_0009.clear();
+        self.def_levels_0009.clear();
+        self.values_0010.clear();
+        self.def_levels_0010.clear();
+        self.values_0011.clear();
+        self.def_levels_0011.clear();
+        self.values_0012.clear();
+        self.def_levels_0012.clear();
+        self.values_0013.clear();
+        self.def_levels_0013.clear();
+        self.rep_levels_0013.clear();
+    }
+}
 #[cfg(test)]
 mod test {
     impl quickcheck::Arbitrary for super::User {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                id: <_>::arbitrary(g),
-                ts: chrono::SubsecRound::trunc_subsecs(
-                    chrono::TimeZone::timestamp_millis_opt(
-                            &chrono::Utc,
-                            gen_valid_timestamp_milli(g),
-                        )
-                        .single()
-                        .expect("Arbitrary instance for DateTime<Utc> is invalid"),
-                    3,
-                ),
-                status: <_>::arbitrary(g),
-                user_info: <_>::arbitrary(g),
-            }
+            Self::new(
+                    <_>::arbitrary(g),
+                    chrono::SubsecRound::trunc_subsecs(
+                        chrono::TimeZone::timestamp_millis_opt(
+                                &chrono::Utc,
+                                gen_valid_timestamp_milli(g),
+                            )
+                            .single()
+                            .expect(
+                                "Invalid quickcheck::Arbitrary instance for DateTime<Utc>",
+                            ),
+                        3,
+                    ),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for User")
         }
     }
     impl quickcheck::Arbitrary for super::UserInfo {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                screen_name: <_>::arbitrary(g),
-                user_name_info: <_>::arbitrary(g),
-            }
+            Self::new(
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for UserInfo")
         }
     }
     impl quickcheck::Arbitrary for super::UserNameInfo {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                name: <_>::arbitrary(g),
-                user_profile_info: <_>::arbitrary(g),
-            }
+            Self::new(
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for UserNameInfo")
         }
     }
     impl quickcheck::Arbitrary for super::UserProfileInfo {
         fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-            Self {
-                created_at: chrono::SubsecRound::trunc_subsecs(
-                    chrono::TimeZone::timestamp_millis_opt(
-                            &chrono::Utc,
-                            gen_valid_timestamp_milli(g),
-                        )
-                        .single()
-                        .expect("Arbitrary instance for DateTime<Utc> is invalid"),
-                    3,
-                ),
-                location: <_>::arbitrary(g),
-                description: <_>::arbitrary(g),
-                url: <_>::arbitrary(g),
-                followers_count: <_>::arbitrary(g),
-                friends_count: <_>::arbitrary(g),
-                favourites_count: <_>::arbitrary(g),
-                statuses_count: <_>::arbitrary(g),
-                withheld_in_countries: <_>::arbitrary(g),
-            }
+            Self::new(
+                    chrono::SubsecRound::trunc_subsecs(
+                        chrono::TimeZone::timestamp_millis_opt(
+                                &chrono::Utc,
+                                gen_valid_timestamp_milli(g),
+                            )
+                            .single()
+                            .expect(
+                                "Invalid quickcheck::Arbitrary instance for DateTime<Utc>",
+                            ),
+                        3,
+                    ),
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    {
+                        let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                        value.retain(|char| char != ' ');
+                        value
+                    },
+                    {
+                        let optional: Option<()> = <_>::arbitrary(g);
+                        optional
+                            .map(|_| {
+                                let mut value: String = quickcheck::Arbitrary::arbitrary(g);
+                                value.retain(|char| char != ' ');
+                                value
+                            })
+                    },
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                    <_>::arbitrary(g),
+                )
+                .expect("Invalid quickcheck::Arbitrary instance for UserProfileInfo")
         }
     }
     fn round_trip_write_impl(groups: Vec<Vec<super::User>>) -> bool {
@@ -1001,7 +1421,7 @@ mod test {
         let test_file = std::fs::File::create(&test_file_path).unwrap();
         let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
                 test_file,
-                <super::User as parquetry::Schema>::schema(),
+                <super::User as parquetry::Schema>::schema().root_schema_ptr(),
                 Default::default(),
             )
             .unwrap();

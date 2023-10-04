@@ -1,13 +1,88 @@
-use codegen::{Block, Module, Scope};
-use convert_case::{Case, Casing};
+use codegen::{Block, Function, Scope};
 use parquet::{basic::Type as PhysicalType, schema::types::ColumnDescPtr};
 
 use super::{
     error::Error,
-    schema::{GenField, GenSchema, GenType},
+    schema::{GenColumn, GenField, GenSchema, GenStruct, GenType},
+    types::{DateTimeUnit, TypeMapping},
 };
 
 pub const WORKSPACE_STRUCT_NAME: &str = "ParquetryWorkspace";
+
+pub fn gen_constructor(gen_struct: &GenStruct, function: &mut Function) -> Result<(), Error> {
+    function
+        .vis("pub")
+        .ret("Result<Self, parquetry::error::ValueError>");
+
+    for field in &gen_struct.fields {
+        function.arg(&field.name, field.type_name());
+
+        if let GenType::Column(column) = &field.gen_type {
+            match column.mapping {
+                TypeMapping::DateTime(date_time_unit) => {
+                    let digits = match date_time_unit {
+                        DateTimeUnit::Millis => 3,
+                        DateTimeUnit::Micros => 6,
+                    };
+
+                    if field.optional {
+                        function.line(format!(
+                            "let {} = {}.map(|value| chrono::SubsecRound::trunc_subsecs(value, {}));",
+                            field.name, field.name, digits));
+                    } else {
+                        function.line(format!(
+                            "let {} = chrono::SubsecRound::trunc_subsecs({}, {});",
+                            field.name, field.name, digits
+                        ));
+                    }
+                }
+                TypeMapping::String => {
+                    let mut column_path_code = String::new();
+                    column_path_code.push_str("parquet::schema::types::ColumnPath::new(vec![");
+                    for part in column.descriptor.path().parts() {
+                        column_path_code.push_str(&format!("\"{}\".to_string(), ", part));
+                    }
+                    column_path_code.push_str("])");
+
+                    if field.optional {
+                        function.line(format!(
+                            "if let Some({}) = {}.as_ref() {{",
+                            field.name, field.name
+                        ));
+                    }
+
+                    function.line(format!(
+                        "for (index, byte) in {}.as_bytes().iter().enumerate() {{",
+                        field.name
+                    ));
+                    function.line("if *byte == 0 {");
+                    function.line(format!(
+                        "return Err(parquetry::error::ValueError::NullByteString {{ column_path: {}, index }});",
+                        column_path_code
+                    ));
+
+                    if field.optional {
+                        function.line("}");
+                    }
+
+                    function.line("}");
+                    function.line("}");
+                }
+                _ => {}
+            }
+        }
+    }
+
+    function.line("Ok(Self {");
+
+    for field in &gen_struct.fields {
+        function.line(format!("{}, ", field.name));
+    }
+
+    function.line("})");
+
+    Ok(())
+}
 
 pub fn gen_field_writer_code(
     gen_field: &GenField,
@@ -62,12 +137,12 @@ fn gen_type_writer_code(
     rep_level: Option<usize>,
 ) -> Result<Vec<String>, Error> {
     let code = match gen_type {
-        GenType::Column {
+        GenType::Column(GenColumn {
             index,
             descriptor,
             mapping,
             ..
-        } => {
+        }) => {
             let assignment = gen_push(
                 format!("workspace.{}", values_var_name(*index)),
                 mapping.physical_type_conversion(name),
@@ -273,7 +348,7 @@ fn gen_row_match_lines(
     }
 
     match gen_type {
-        GenType::Column { mapping, .. } => {
+        GenType::Column(GenColumn { mapping, .. }) => {
             if optional {
                 lines.push(format!(
                     "parquet::record::Field::{}({}) => Ok(Some({})),",
@@ -391,7 +466,7 @@ pub fn gen_write_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line("let mut file_writer = ");
-    block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.clone(), std::sync::Arc::new(properties))?;");
+    block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?;");
     block.line(format!(
         "let mut workspace = {}::default();",
         WORKSPACE_STRUCT_NAME
@@ -479,102 +554,6 @@ pub fn gen_write_with_workspace_block(columns: &[ColumnDescPtr]) -> Result<Block
     Ok(block)
 }
 
-enum ColumnInfoTree {
-    Leaf(usize, ColumnDescPtr),
-    Branch(ColumnInfoBranch),
-}
-
-impl ColumnInfoTree {
-    fn add(&self, module: &mut Module, name: &str) {
-        match self {
-            Self::Leaf(index, column) => {
-                let path_parts = column
-                    .path()
-                    .parts()
-                    .iter()
-                    .map(|part| format!("\"{}\"", part))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                module
-                    .scope()
-                    .raw(format!("pub const {}: parquetry::ColumnInfo = parquetry::ColumnInfo {{ index: {}, path: &[{}] }};", name.to_case(Case::ScreamingSnake), index, path_parts));
-            }
-            Self::Branch(branch) => {
-                let child_module = module.new_module(name).vis("pub");
-                for (name, tree) in &branch.0 {
-                    tree.add(child_module, name);
-                }
-            }
-        }
-    }
-}
-
-struct ColumnInfoBranch(Vec<(String, ColumnInfoTree)>);
-
-impl ColumnInfoBranch {
-    fn get_branch(&mut self, target_name: &str) -> Option<&mut ColumnInfoBranch> {
-        self.0.iter_mut().find_map(|(name, tree)| match tree {
-            ColumnInfoTree::Branch(branch) if name == target_name => Some(branch),
-            _ => None,
-        })
-    }
-
-    fn add(&mut self, path: Option<Vec<String>>, index: usize, column: ColumnDescPtr) {
-        match path {
-            None => self.add(
-                Some(
-                    column
-                        .path()
-                        .parts()
-                        .iter()
-                        .filter(|value| *value != "list" && *value != "element")
-                        .rev()
-                        .cloned()
-                        .collect(),
-                ),
-                index,
-                column.clone(),
-            ),
-            Some(mut path) => {
-                if path.len() == 1 {
-                    self.0
-                        .push((path[0].clone(), ColumnInfoTree::Leaf(index, column)));
-                } else {
-                    if let Some(next) = path.pop() {
-                        let tree = match self.get_branch(&next) {
-                            Some(existing) => existing,
-                            None => {
-                                self.0.push((
-                                    next.clone(),
-                                    ColumnInfoTree::Branch(ColumnInfoBranch(vec![])),
-                                ));
-                                self.get_branch(&next).unwrap()
-                            }
-                        };
-
-                        tree.add(Some(path), index, column.clone())
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn add_column_info_modules(scope: &mut Scope, columns: &[ColumnDescPtr]) {
-    let mut root = ColumnInfoBranch(vec![]);
-
-    for (index, column) in columns.iter().enumerate() {
-        root.add(None, index, column.clone());
-    }
-
-    let module = scope.new_module("columns").vis("pub");
-
-    for (name, tree) in root.0 {
-        tree.add(module, &name);
-    }
-}
-
 pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Result<(), Error> {
     let workspace = scope.new_struct(WORKSPACE_STRUCT_NAME);
     let mut clear_code = vec![];
@@ -615,6 +594,84 @@ pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Res
     }
 
     Ok(())
+}
+
+pub fn gen_sort_key_value_block() -> Block {
+    let mut block = Block::new("");
+    block.line("let mut bytes = vec![];");
+    block.line("for column in sort_key.columns() {");
+    block.line("self.write_sort_key_bytes(column, &mut bytes);");
+    block.line("}");
+    block.line("bytes");
+    block
+}
+
+pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error> {
+    let mut block = Block::new("match column.column");
+    for gen_column in schema
+        .gen_columns()
+        .iter()
+        .filter(|gen_column| gen_column.is_sort_column())
+    {
+        let mut value_path = String::new();
+        let mut any_optional = false;
+        for (index, (part, optional)) in gen_column.rust_path.iter().enumerate() {
+            let last = index == gen_column.rust_path.len() - 1;
+
+            if any_optional {
+                if *optional {
+                    if last && gen_column.mapping.is_copy() {
+                        value_path.push_str(&format!(".and_then(|value| value.{})", part));
+                    } else {
+                        value_path.push_str(&format!(".and_then(|value| value.{}.as_ref())", part));
+                    }
+                } else if last && gen_column.mapping.is_copy() {
+                    value_path.push_str(&format!(".map(|value| value.{})", part));
+                } else {
+                    value_path.push_str(&format!(".map(|value| &value.{})", part));
+                }
+            } else {
+                value_path.push_str(&format!(".{}", part));
+
+                if *optional {
+                    if !last || !gen_column.mapping.is_copy() {
+                        value_path.push_str(".as_ref()");
+                    }
+                    any_optional = true;
+                }
+            }
+        }
+
+        let mut code = String::new();
+
+        if any_optional {
+            code.push_str("match value {");
+            code.push_str("Some(value) => {");
+            code.push_str("bytes.push(if column.nulls_first { 1 } else { 0 });");
+            code.push_str(&gen_column.mapping.write_bytes());
+            code.push('}');
+            code.push_str("None => { bytes.push(if column.nulls_first { 0 } else { 1 }); }");
+            code.push('}');
+        } else {
+            code.push_str(&gen_column.mapping.write_bytes());
+        }
+        if !any_optional && gen_column.rust_path.len() == 1 && !gen_column.mapping.is_copy() {
+            block.line(format!(
+                "columns::SortColumn::{} => {{ let value = &self{}; {} }},",
+                gen_column.variant_name(),
+                value_path,
+                code,
+            ));
+        } else {
+            block.line(format!(
+                "columns::SortColumn::{} => {{ let value = self{}; {} }},",
+                gen_column.variant_name(),
+                value_path,
+                code,
+            ));
+        }
+    }
+    Ok(block)
 }
 
 fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
