@@ -615,6 +615,7 @@ impl User {
                         for b in value.as_bytes() {
                             bytes.push(if column.descending { !b } else { *b });
                         }
+                        bytes.push(b'\0');
                     }
                     None => {
                         bytes.push(if column.nulls_first { 0 } else { 1 });
@@ -633,6 +634,7 @@ impl User {
                         for b in value.as_bytes() {
                             bytes.push(if column.descending { !b } else { *b });
                         }
+                        bytes.push(b'\0');
                     }
                     None => {
                         bytes.push(if column.nulls_first { 0 } else { 1 });
@@ -671,6 +673,7 @@ impl User {
                         for b in value.as_bytes() {
                             bytes.push(if column.descending { !b } else { *b });
                         }
+                        bytes.push(b'\0');
                     }
                     None => {
                         bytes.push(if column.nulls_first { 0 } else { 1 });
@@ -690,6 +693,7 @@ impl User {
                         for b in value.as_bytes() {
                             bytes.push(if column.descending { !b } else { *b });
                         }
+                        bytes.push(b'\0');
                     }
                     None => {
                         bytes.push(if column.nulls_first { 0 } else { 1 });
@@ -709,6 +713,7 @@ impl User {
                         for b in value.as_bytes() {
                             bytes.push(if column.descending { !b } else { *b });
                         }
+                        bytes.push(b'\0');
                     }
                     None => {
                         bytes.push(if column.nulls_first { 0 } else { 1 });

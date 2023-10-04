@@ -209,6 +209,7 @@ impl TypeMapping {
                 code.push_str("for b in value.as_bytes() {");
                 code.push_str("bytes.push(if column.descending { !b } else { *b });");
                 code.push('}');
+                code.push_str("bytes.push(b'\\0');");
             }
             Self::ByteArray => {
                 code.push_str("for b in value {");
