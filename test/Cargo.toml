@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 lazy_static = "1"
-parquet = "47"
+parquet = "48"
 parquetry = { path = "../lib/" }
 parquetry-sort = { path = "../sort/" }
 serde = { version = "1", features = ["derive"] }
