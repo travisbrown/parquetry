@@ -7,7 +7,7 @@ edition = "2021"
 chrono = "0.4"
 cli-helpers = "0.1"
 lazy_static = "1"
-parquet = "48"
+parquet = "49"
 parquetry = { path = "../lib/" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"

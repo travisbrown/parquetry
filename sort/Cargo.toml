@@ -13,7 +13,7 @@ readme = "../README.md"
 [dependencies]
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
 chrono = "0.4"
-parquet = "48"
+parquet = "49"
 parquetry = { version = "0.5.0", path = "../lib/" }
 serde = "1"
 rocksdb = "0.21"
