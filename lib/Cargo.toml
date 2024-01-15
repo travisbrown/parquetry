@@ -12,5 +12,5 @@ readme = "../README.md"
 
 [dependencies]
 chrono = "0.4"
-parquet = "49"
+parquet = "50"
 thiserror = "1"
