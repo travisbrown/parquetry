@@ -16,5 +16,5 @@ chrono = "0.4"
 parquet = "50"
 parquetry = { version = "0.6.0", path = "../lib/" }
 serde = "1"
-rocksdb = "0.21"
+rocksdb = "0.22"
 thiserror = "1"
