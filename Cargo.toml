@@ -8,3 +8,10 @@ members = [
     "sort",
     "test"
 ]
+
+[workspace.dependencies]
+bincode = { version = "2.0.0-rc.3", features = ["serde"] }
+chrono = "0.4"
+lazy_static = "1"
+parquet = "50"
+thiserror = "1"

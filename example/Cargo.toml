@@ -4,10 +4,10 @@ version = "0.5.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4"
+chrono = { workspace = true }
 cli-helpers = "0.1"
-lazy_static = "1"
-parquet = "50"
+lazy_static = { workspace = true }
+parquet = { workspace = true }
 parquetry = { path = "../lib/" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
@@ -16,6 +16,6 @@ thiserror = "1"
 parquetry-gen = { path = "../gen/" }
 
 [dev-dependencies]
-bincode = { version = "2.0.0-rc.3", features = ["serde"] }
+bincode = { workspace = true }
 quickcheck = "1"
 tempdir = "0.3"

@@ -11,6 +11,6 @@ license-file = "../LICENSE"
 readme = "../README.md"
 
 [dependencies]
-chrono = "0.4"
-parquet = "50"
-thiserror = "1"
+chrono = { workspace = true }
+parquet = { workspace = true }
+thiserror = { workspace = true }

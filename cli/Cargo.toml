@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 cli-helpers = "0.1"
-parquet = "50"
+parquet = { workspace = true }
 parquetry-gen = { path = "../gen/" }
-thiserror = "1"
+thiserror = { workspace = true }
