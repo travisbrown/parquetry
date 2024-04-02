@@ -1,6 +1,6 @@
 [package]
 name = "parquetry-sort"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["Travis Brown <travisrobertbrown@gmail.com>"]
 homepage = "https://github.com/travisbrown/parquetry"
@@ -14,7 +14,7 @@ readme = "../README.md"
 bincode = { workspace = true }
 chrono = { workspace = true }
 parquet = { workspace = true }
-parquetry = { version = "0.7.0", path = "../lib/" }
+parquetry = { version = "0.8.0", path = "../lib/" }
 serde = "1"
 rocksdb = "0.22"
 thiserror = { workspace = true }
