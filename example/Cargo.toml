@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 chrono = { workspace = true }
 cli-helpers = "0.1"
-lazy_static = { workspace = true }
+once_cell = { workspace = true }
 parquet = { workspace = true }
 parquetry = { path = "../lib/" }
 serde = { version = "1", features = ["derive"] }

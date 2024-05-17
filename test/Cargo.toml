@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-lazy_static = { workspace = true }
+once_cell = { workspace = true }
 parquet = { workspace = true }
 parquetry = { path = "../lib/" }
 parquetry-sort = { path = "../sort/" }
