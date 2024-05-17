@@ -30,11 +30,14 @@ const SCHEMA_SOURCE: &str = "message user {
         }
     }
 }";
-lazy_static::lazy_static! {
-    pub static ref SCHEMA : parquet::schema::types::SchemaDescPtr =
-    std::sync::Arc::new(parquet::schema::types::SchemaDescriptor::new(std::sync::Arc::new(parquet::schema::parser::parse_message_type(SCHEMA_SOURCE)
-    .unwrap())));
-}
+pub static SCHEMA: once_cell::sync::Lazy<parquet::schema::types::SchemaDescPtr> = once_cell::sync::Lazy::new(||
+std::sync::Arc::new(
+    parquet::schema::types::SchemaDescriptor::new(
+        std::sync::Arc::new(
+            parquet::schema::parser::parse_message_type(SCHEMA_SOURCE).unwrap(),
+        ),
+    ),
+));
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct User {
     pub id: u64,

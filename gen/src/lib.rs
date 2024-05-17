@@ -153,16 +153,16 @@ pub fn parse_schema(
     Ok((schema, descriptor))
 }
 
-const STATIC_SCHEMA_DEF: &str = "lazy_static::lazy_static! {
-    pub static ref SCHEMA: parquet::schema::types::SchemaDescPtr =
-        std::sync::Arc::new(
+const STATIC_SCHEMA_DEF: &str = "
+    pub static SCHEMA: once_cell::sync::Lazy<parquet::schema::types::SchemaDescPtr> =
+        once_cell::sync::Lazy::new(|| std::sync::Arc::new(
             parquet::schema::types::SchemaDescriptor::new(
                 std::sync::Arc::new(
                     parquet::schema::parser::parse_message_type(SCHEMA_SOURCE).unwrap()
                 )
             )
-        );
-}";
+        ));
+";
 
 fn schema_to_scope(
     schema_source: &str,
