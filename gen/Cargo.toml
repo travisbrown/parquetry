@@ -1,6 +1,6 @@
 [package]
 name = "parquetry-gen"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2021"
 authors = ["Travis Brown <travisrobertbrown@gmail.com>"]
 homepage = "https://github.com/travisbrown/parquetry"
