@@ -8,7 +8,6 @@ chrono = { version = "0.4", features = ["serde"] }
 once_cell = { workspace = true }
 parquet = { workspace = true }
 parquetry = { path = "../lib/" }
-parquetry-sort = { path = "../sort/" }
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 
@@ -17,5 +16,6 @@ parquetry-gen = { path = "../gen/" }
 
 [dev-dependencies]
 bincode = { workspace = true }
+parquetry-sort = { path = "../sort/" }
 quickcheck = "1"
 tempdir = "0.3"
