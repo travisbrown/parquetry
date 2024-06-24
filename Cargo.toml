@@ -9,6 +9,15 @@ members = [
     "test"
 ]
 
+[workspace.package]
+authors = ["Travis Brown <travisrobertbrown@gmail.com>"]
+repository = "https://github.com/travisbrown/parquetry"
+homepage = "https://github.com/travisbrown/parquetry"
+edition = "2021"
+version = "0.10.0"
+license-file = "LICENSE"
+readme = "README.md"
+
 [workspace.dependencies]
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
 chrono = "0.4"

@@ -1,20 +1,19 @@
 [package]
 name = "parquetry-sort"
-version = "0.9.0"
-edition = "2021"
-authors = ["Travis Brown <travisrobertbrown@gmail.com>"]
-homepage = "https://github.com/travisbrown/parquetry"
-repository = "https://github.com/travisbrown/parquetry"
-description = "Runtime library for Parquet code generator"
+description = "Runtime sorting library for Parquet code generator"
 keywords = ["parquet"]
-license-file = "../LICENSE"
-readme = "../README.md"
+authors = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+license-file = { workspace = true }
+readme = { workspace = true }
 
 [dependencies]
 bincode = { workspace = true }
 chrono = { workspace = true }
 parquet = { workspace = true }
-parquetry = { version = "0.9.0", path = "../lib/" }
+parquetry = { version = "0.10.0", path = "../lib/" }
 serde = "1"
 rocksdb = "0.22"
 thiserror = { workspace = true }

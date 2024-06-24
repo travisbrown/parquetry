@@ -1,7 +1,11 @@
 [package]
 name = "parquetry-cli"
-version = "0.9.0"
-edition = "2021"
+authors = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+license-file = { workspace = true }
+readme = { workspace = true }
 
 [dependencies]
 cli-helpers = "0.1"
