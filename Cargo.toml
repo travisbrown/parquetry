@@ -13,5 +13,5 @@ members = [
 bincode = { version = "2.0.0-rc.3", features = ["serde"] }
 chrono = "0.4"
 once_cell = "1"
-parquet = "51"
+parquet = "52"
 thiserror = "1"
