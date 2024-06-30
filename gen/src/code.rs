@@ -159,7 +159,7 @@ fn gen_type_writer_code(
                     ))
                 };
             } else {
-                let some_code = vec![
+                let some_code = [
                     assignment,
                     gen_push(
                         format!("workspace.{}", def_levels_var_name(*index)),
