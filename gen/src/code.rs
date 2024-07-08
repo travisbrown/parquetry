@@ -462,45 +462,50 @@ fn gen_row_conversion_assignments(
     Ok(lines)
 }
 
-pub fn gen_write_block() -> Result<Block, Error> {
+pub fn gen_writer_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
-    block.line("let mut file_writer = ");
-    block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?;");
-    block.line(format!(
-        "let mut workspace = {}::default();",
-        WORKSPACE_STRUCT_NAME
-    ));
-
-    block.line("for group in groups {");
-    block.line("Self::fill_workspace(&mut workspace, &group)?;");
-    block.line("Self::write_with_workspace(&mut file_writer, &mut workspace)?;");
-    block.line("}");
-    block.line("Ok(file_writer.close()?)");
+    block.line("Ok(Self::Writer {");
+    block.line("writer: parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?,");
+    block.line("workspace: Default::default()");
+    block.line("})");
 
     Ok(block)
 }
 
-pub fn gen_write_group_block() -> Result<Block, Error> {
+pub fn gen_writer_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line(format!(
-        "let mut workspace = {}::default();",
-        WORKSPACE_STRUCT_NAME
+        "{}::fill_workspace(&mut self.workspace, values)?;",
+        gen_schema.type_name
     ));
-
-    block.line("Self::fill_workspace(&mut workspace, group)?;");
-    block.line("Self::write_with_workspace(file_writer, &mut workspace)");
+    block.line(format!(
+        "{}::write_with_workspace(&mut self.writer, &mut self.workspace).map_err(E::from)",
+        gen_schema.type_name
+    ));
 
     Ok(block)
 }
 
 pub fn gen_fill_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
-    block.line("let mut written_count_ = 0;");
+    block.line("let mut written_count = 0;");
+    block.line("for result in values {");
+    block.line("Self::add_item_to_workspace(workspace, result?)?;");
+    block.line("written_count += 1;");
+    block.line("}");
+
+    block.line("Ok(written_count)");
+
+    Ok(block)
+}
+
+pub fn gen_add_item_to_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+    let mut block = Block::new("");
 
     block.line(format!(
-        "for {} {{ {} }} in group {{",
+        "let {} {{ {} }} = value;",
         gen_schema.type_name,
         gen_schema.field_names().join(", ")
     ));
@@ -510,10 +515,8 @@ pub fn gen_fill_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> 
             block.line(line);
         }
     }
-    block.line("written_count_ += 1;");
-    block.line("}");
 
-    block.line("Ok(written_count_)");
+    block.line("Ok(())");
 
     Ok(block)
 }

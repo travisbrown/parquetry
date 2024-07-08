@@ -35,10 +35,6 @@ pub fn gen_test_code(test_module: &mut Module, schema: &GenSchema) -> Result<(),
         test_module.scope().raw(line);
     }
 
-    for line in gen_round_trip_write_group(&schema.type_name) {
-        test_module.scope().raw(line);
-    }
-
     for line in gen_round_trip_serde_bincode(&schema.type_name) {
         test_module.scope().raw(line);
     }
@@ -180,7 +176,7 @@ fn gen_round_trip_write(type_name: &str) -> Vec<String> {
         format!("let test_dir = tempdir::TempDir::new(\"{}-data\").unwrap();", type_name),
         "let test_file_path = test_dir.path().join(\"write-data.parquet\");".to_string(),
         "let test_file = std::fs::File::create(&test_file_path).unwrap();".to_string(),
-        format!("<super::{} as parquetry::Schema>::write(test_file, Default::default(), groups.clone()).unwrap();", type_name),
+        format!("<super::{} as parquetry::Schema>::write_row_groups(test_file, Default::default(), groups.clone()).unwrap();", type_name),
         "let read_file = std::fs::File::open(test_file_path).unwrap();".to_string(),
         "let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();".to_string(),
         format!("let read_values = <super::{} as parquetry::Schema>::read(read_file, read_options).collect::<Result<Vec<_>, _>>().unwrap();", type_name),
@@ -189,28 +185,6 @@ fn gen_round_trip_write(type_name: &str) -> Vec<String> {
         "quickcheck::quickcheck! {".to_string(),
         format!("    fn round_trip_write(groups: Vec<Vec<super::{}>>) -> bool {{", type_name),
         "        round_trip_write_impl(groups)".to_string(),
-        "    }".to_string(),
-        "}".to_string()
-    ]
-}
-
-fn gen_round_trip_write_group(type_name: &str) -> Vec<String> {
-    vec![
-        format!("fn round_trip_write_group_impl(groups: Vec<Vec<super::{}>>) -> bool {{", type_name),
-        format!("let test_dir = tempdir::TempDir::new(\"{}-data\").unwrap();", type_name),
-        "let test_file_path = test_dir.path().join(\"write_group-data.parquet\");".to_string(),
-        "let test_file = std::fs::File::create(&test_file_path).unwrap();".to_string(),
-        format!("let mut file_writer = parquet::file::writer::SerializedFileWriter::new(test_file, <super::{} as parquetry::Schema>::schema().root_schema_ptr(), Default::default()).unwrap();", type_name),
-        format!("for group in &groups {{ <super::{} as parquetry::Schema>::write_group(&mut file_writer, group).unwrap(); }}", type_name),
-        "file_writer.close().unwrap();".to_string(),
-        "let read_file = std::fs::File::open(test_file_path).unwrap();".to_string(),
-        "let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();".to_string(),
-        format!("let read_values = <super::{} as parquetry::Schema>::read(read_file, read_options).collect::<Result<Vec<_>, _>>().unwrap();", type_name),
-        "read_values == groups.into_iter().flatten().collect::<Vec<_>>()".to_string(),
-        "}".to_string(),
-        "quickcheck::quickcheck! {".to_string(),
-        format!("    fn round_trip_write_group(groups: Vec<Vec<super::{}>>) -> bool {{", type_name),
-        "        round_trip_write_group_impl(groups)".to_string(),
         "    }".to_string(),
         "}".to_string()
     ]
