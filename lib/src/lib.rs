@@ -5,7 +5,6 @@ use parquet::{
     file::{
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
-        writer::SerializedFileWriter,
     },
     format::SortingColumn,
     record::{reader::RowIter, Row},
@@ -116,6 +115,7 @@ impl<C: Copy + SortColumn> From<SortKey<C>> for Vec<SortingColumn> {
 
 pub trait Schema: Sized {
     type SortColumn;
+    type Writer<W: std::io::Write + Send>: SchemaWrite<Self, W>;
 
     fn source() -> &'static str;
     fn schema() -> SchemaDescPtr;
@@ -168,16 +168,16 @@ pub trait Schema: Sized {
         }
     }
 
+    fn writer<W: std::io::Write + Send>(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+    ) -> Result<Self::Writer<W>, Error>;
+
     fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
         writer: W,
         properties: parquet::file::properties::WriterProperties,
         groups: I,
     ) -> Result<parquet::format::FileMetaData, Error>;
-
-    fn write_group<W: std::io::Write + Send>(
-        file_writer: &mut SerializedFileWriter<W>,
-        group: &[Self],
-    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>;
 }
 
 pub enum SchemaIter<T> {
@@ -199,4 +199,15 @@ impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
                 .map(|row| row.map_err(Error::from).and_then(|row| row.try_into())),
         }
     }
+}
+
+pub trait SchemaWrite<T, W: std::io::Write> {
+    fn write_group<'a, I: Iterator<Item = &'a T>>(
+        &mut self,
+        values: I,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>
+    where
+        T: 'a;
+
+    fn finish(self) -> Result<parquet::format::FileMetaData, Error>;
 }

@@ -465,32 +465,38 @@ fn gen_row_conversion_assignments(
 pub fn gen_write_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
-    block.line("let mut file_writer = ");
-    block.line("parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?;");
-    block.line(format!(
-        "let mut workspace = {}::default();",
-        WORKSPACE_STRUCT_NAME
-    ));
-
+    block.line("use parquetry::SchemaWrite;");
+    block.line("let mut writer = Self::writer(writer, properties)?;");
     block.line("for group in groups {");
-    block.line("Self::fill_workspace(&mut workspace, &group)?;");
-    block.line("Self::write_with_workspace(&mut file_writer, &mut workspace)?;");
+    block.line("writer.write_group(group.iter())?;");
     block.line("}");
-    block.line("Ok(file_writer.close()?)");
+    block.line("writer.finish()");
 
     Ok(block)
 }
 
-pub fn gen_write_group_block() -> Result<Block, Error> {
+pub fn gen_writer_block() -> Result<Block, Error> {
+    let mut block = Block::new("");
+
+    block.line("Ok(Self::Writer {");
+    block.line("writer: parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?,");
+    block.line("workspace: Default::default()");
+    block.line("})");
+
+    Ok(block)
+}
+
+pub fn gen_write_write_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line(format!(
-        "let mut workspace = {}::default();",
-        WORKSPACE_STRUCT_NAME
+        "{}::fill_workspace(&mut self.workspace, values)?;",
+        gen_schema.type_name
     ));
-
-    block.line("Self::fill_workspace(&mut workspace, group)?;");
-    block.line("Self::write_with_workspace(file_writer, &mut workspace)");
+    block.line(format!(
+        "{}::write_with_workspace(&mut self.writer, &mut self.workspace)",
+        gen_schema.type_name
+    ));
 
     Ok(block)
 }

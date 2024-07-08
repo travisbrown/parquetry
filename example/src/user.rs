@@ -212,6 +212,7 @@ pub mod columns {
 }
 impl parquetry::Schema for User {
     type SortColumn = columns::SortColumn;
+    type Writer<W: std::io::Write + Send> = UserWriter<W>;
     fn sort_key_value(&self, sort_key: parquetry::SortKey<Self::SortColumn>) -> Vec<u8> {
         {
             let mut bytes = vec![];
@@ -233,28 +234,49 @@ impl parquetry::Schema for User {
         groups: I,
     ) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
         {
-            let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
-                writer,
-                SCHEMA.root_schema_ptr(),
-                std::sync::Arc::new(properties),
-            )?;
-            let mut workspace = ParquetryWorkspace::default();
+            use parquetry::SchemaWrite;
+            let mut writer = Self::writer(writer, properties)?;
             for group in groups {
-                Self::fill_workspace(&mut workspace, &group)?;
-                Self::write_with_workspace(&mut file_writer, &mut workspace)?;
+                writer.write_group(group.iter())?;
             }
-            Ok(file_writer.close()?)
+            writer.finish()
         }
     }
-    fn write_group<W: std::io::Write + Send>(
-        file_writer: &mut parquet::file::writer::SerializedFileWriter<W>,
-        group: &[Self],
-    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
+    fn writer<W: std::io::Write + Send>(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+    ) -> Result<Self::Writer<W>, parquetry::error::Error> {
         {
-            let mut workspace = ParquetryWorkspace::default();
-            Self::fill_workspace(&mut workspace, group)?;
-            Self::write_with_workspace(file_writer, &mut workspace)
+            Ok(Self::Writer {
+                writer: parquet::file::writer::SerializedFileWriter::new(
+                    writer,
+                    SCHEMA.root_schema_ptr(),
+                    std::sync::Arc::new(properties),
+                )?,
+                workspace: Default::default(),
+            })
         }
+    }
+}
+pub struct UserWriter<W: std::io::Write> {
+    writer: parquet::file::writer::SerializedFileWriter<W>,
+    workspace: ParquetryWorkspace,
+}
+impl<W: std::io::Write + Send> parquetry::SchemaWrite<User, W> for UserWriter<W> {
+    fn write_group<'a, I: Iterator<Item = &'a User>>(
+        &mut self,
+        values: I,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>
+    where
+        User: 'a,
+    {
+        {
+            User::fill_workspace(&mut self.workspace, values)?;
+            User::write_with_workspace(&mut self.writer, &mut self.workspace)
+        }
+    }
+    fn finish(self) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
+        Ok(self.writer.close()?)
     }
 }
 impl TryFrom<parquet::record::Row> for User {
@@ -981,9 +1003,9 @@ impl User {
             Ok(row_group_writer.close()?)
         }
     }
-    fn fill_workspace(
+    fn fill_workspace<'a, I: Iterator<Item = &'a Self>>(
         workspace: &mut ParquetryWorkspace,
-        group: &[Self],
+        group: I,
     ) -> Result<usize, parquetry::error::Error> {
         {
             let mut written_count_ = 0;
@@ -1417,36 +1439,6 @@ mod test {
     quickcheck::quickcheck! {
         fn round_trip_write(groups : Vec < Vec < super::User >>) -> bool {
         round_trip_write_impl(groups) }
-    }
-    fn round_trip_write_group_impl(groups: Vec<Vec<super::User>>) -> bool {
-        let test_dir = tempdir::TempDir::new("User-data").unwrap();
-        let test_file_path = test_dir.path().join("write_group-data.parquet");
-        let test_file = std::fs::File::create(&test_file_path).unwrap();
-        let mut file_writer = parquet::file::writer::SerializedFileWriter::new(
-                test_file,
-                <super::User as parquetry::Schema>::schema().root_schema_ptr(),
-                Default::default(),
-            )
-            .unwrap();
-        for group in &groups {
-            <super::User as parquetry::Schema>::write_group(&mut file_writer, group)
-                .unwrap();
-        }
-        file_writer.close().unwrap();
-        let read_file = std::fs::File::open(test_file_path).unwrap();
-        let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new()
-            .build();
-        let read_values = <super::User as parquetry::Schema>::read(
-                read_file,
-                read_options,
-            )
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-        read_values == groups.into_iter().flatten().collect::<Vec<_>>()
-    }
-    quickcheck::quickcheck! {
-        fn round_trip_write_group(groups : Vec < Vec < super::User >>) -> bool {
-        round_trip_write_group_impl(groups) }
     }
     fn round_trip_serde_bincode_impl(values: Vec<super::User>) -> bool {
         let wrapped = bincode::serde::Compat(&values);
