@@ -103,7 +103,7 @@ fn main() -> Result<(), Error> {
 
             let output = File::create(output)?;
 
-            User::write(output, Default::default(), vec![data])?;
+            User::write_row_groups(output, Default::default(), vec![data])?;
         }
     }
 

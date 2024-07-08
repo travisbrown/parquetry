@@ -1,6 +1,6 @@
 use bincode::serde::Compat;
-use parquet::file::{properties::WriterPropertiesBuilder, writer::SerializedFileWriter};
-use parquetry::{Schema, SortColumn, SortKey};
+use parquet::file::properties::WriterPropertiesBuilder;
+use parquetry::{Schema, SchemaWrite, SortColumn, SortKey};
 use rocksdb::{BlockBasedOptions, IteratorMode, MergeOperands, Options, DB};
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::File;
@@ -68,18 +68,15 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
     where
         A::SortColumn: Copy + SortColumn,
     {
-        let properties = Arc::new(
-            properties
-                .set_sorting_columns(Some(self.sort_key.into()))
-                .build(),
-        );
+        let properties = properties
+            .set_sorting_columns(Some(self.sort_key.into()))
+            .build();
 
         let file = File::create(output)?;
-        let mut file_writer =
-            SerializedFileWriter::new(file, A::schema().root_schema_ptr(), properties)?;
+        let mut writer = A::writer(file, properties)?;
 
         let mut current_bytes = 0;
-        let mut group = Vec::with_capacity(256);
+        let mut group: Vec<A> = Vec::with_capacity(256);
         let mut group_counts = Vec::with_capacity(1);
 
         for result in self.db.iterator(IteratorMode::Start) {
@@ -108,10 +105,10 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
                         return Err(Error::InvalidRowGroupSize(max_row_group_bytes));
                     }
 
-                    A::write_group(&mut file_writer, &group)?;
                     group_counts.push(group.len());
-                    current_bytes = 0;
+                    writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
                     group.clear();
+                    current_bytes = 0;
                 }
 
                 current_bytes += len;
@@ -120,11 +117,11 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
         }
 
         if !group.is_empty() {
-            A::write_group(&mut file_writer, &group)?;
             group_counts.push(group.len());
+            writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
         }
 
-        file_writer.close()?;
+        writer.finish()?;
 
         Ok(group_counts)
     }

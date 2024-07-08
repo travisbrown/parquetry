@@ -1,3 +1,4 @@
+use std::iter::Peekable;
 use std::marker::PhantomData;
 
 use parquet::{
@@ -5,7 +6,6 @@ use parquet::{
     file::{
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
-        writer::SerializedFileWriter,
     },
     format::SortingColumn,
     record::{reader::RowIter, Row},
@@ -116,6 +116,7 @@ impl<C: Copy + SortColumn> From<SortKey<C>> for Vec<SortingColumn> {
 
 pub trait Schema: Sized {
     type SortColumn;
+    type Writer<W: std::io::Write + Send>: SchemaWrite<Self, W>;
 
     fn source() -> &'static str;
     fn schema() -> SchemaDescPtr;
@@ -168,16 +169,70 @@ pub trait Schema: Sized {
         }
     }
 
-    fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
+    fn writer<W: std::io::Write + Send>(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+    ) -> Result<Self::Writer<W>, Error>;
+
+    fn write_row_groups<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
         writer: W,
         properties: parquet::file::properties::WriterProperties,
         groups: I,
-    ) -> Result<parquet::format::FileMetaData, Error>;
+    ) -> Result<parquet::format::FileMetaData, Error> {
+        let mut writer = Self::writer(writer, properties)?;
 
-    fn write_group<W: std::io::Write + Send>(
-        file_writer: &mut SerializedFileWriter<W>,
-        group: &[Self],
-    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>;
+        for group in groups {
+            writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
+        }
+        writer.finish()
+    }
+
+    fn write<
+        W: std::io::Write + Send,
+        E: From<Error>,
+        I: Iterator<Item = Result<Self, E>>,
+        S: Copy + std::ops::Add<Output = S> + PartialOrd,
+        F: Fn(&Self) -> S,
+    >(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+        max_size: S,
+        get_size: F,
+        fail_on_oversized: bool,
+        items: I,
+    ) -> Result<parquet::format::FileMetaData, E> {
+        let mut writer = Self::writer(writer, properties)?;
+        let mut row_group_splitter = RowGroupSplitter::new(items, max_size, get_size);
+        let mut row_group_index = 0;
+
+        while row_group_splitter.reset() {
+            if fail_on_oversized {
+                for result in row_group_splitter.by_ref() {
+                    match result {
+                        Ok(SizeChecked::Valid(value)) => writer.write_item(&value).map_err(E::from),
+                        Ok(SizeChecked::Oversized(_)) => Err(E::from(Error::OversizedRowValue {
+                            row_group_index: Some(row_group_index),
+                        })),
+                        Err(error) => Err(error),
+                    }?;
+                }
+            } else {
+                for result in row_group_splitter.by_ref() {
+                    match result {
+                        Ok(size_checked) => {
+                            writer.write_item(size_checked.merge()).map_err(E::from)
+                        }
+                        Err(error) => Err(error),
+                    }?;
+                }
+            }
+            writer.finish_row_group()?;
+
+            row_group_index += 1;
+        }
+
+        writer.finish().map_err(E::from)
+    }
 }
 
 pub enum SchemaIter<T> {
@@ -197,6 +252,139 @@ impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
             Self::Streaming { rows, .. } => rows
                 .next()
                 .map(|row| row.map_err(Error::from).and_then(|row| row.try_into())),
+        }
+    }
+}
+
+pub trait SchemaWrite<T, W: std::io::Write> {
+    fn write_row_group<'a, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>>(
+        &mut self,
+        values: &mut I,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, E>
+    where
+        T: 'a;
+
+    fn write_item(&mut self, value: &T) -> Result<(), Error>;
+    fn finish_row_group(&mut self) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>;
+
+    fn finish(self) -> Result<parquet::format::FileMetaData, Error>;
+}
+
+pub struct RowGrouper<T, S, F> {
+    max_size: S,
+    get_size: F,
+    _item: PhantomData<T>,
+}
+
+/*impl<T, F: Fn(&T) -> usize> RowGrouper<T, usize, F> {
+    pub fn by_count(count: usize) -> Self {
+        Self {
+            max_size: count,
+            get_size: |_| 1,
+            _item: PhantomData,
+        }
+    }
+}*/
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
+pub enum SizeChecked<T> {
+    Valid(T),
+    Oversized(T),
+}
+
+impl<T> SizeChecked<T> {
+    fn merge(&self) -> &T {
+        match self {
+            Self::Valid(value) => value,
+            Self::Oversized(value) => value,
+        }
+    }
+}
+
+impl<T> From<SizeChecked<T>> for Result<T, T> {
+    fn from(value: SizeChecked<T>) -> Self {
+        match value {
+            SizeChecked::Valid(value) => Ok(value),
+            SizeChecked::Oversized(value) => Err(value),
+        }
+    }
+}
+
+struct RowGroupSplitter<T, S, E, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> {
+    underlying: Peekable<I>,
+    max_size: S,
+    get_size: F,
+    current_size: Option<S>,
+}
+
+impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S>
+    RowGroupSplitter<T, S, E, I, F>
+{
+    fn new(underlying: I, max_size: S, get_size: F) -> Self {
+        Self {
+            underlying: underlying.peekable(),
+            max_size,
+            get_size,
+            current_size: None,
+        }
+    }
+
+    fn reset(&mut self) -> bool {
+        self.current_size = None;
+
+        self.underlying.peek().is_some()
+    }
+}
+
+impl<
+        T,
+        S: Copy + std::ops::Add<Output = S> + PartialOrd,
+        E,
+        I: Iterator<Item = Result<T, E>>,
+        F: Fn(&T) -> S,
+    > Iterator for RowGroupSplitter<T, S, E, I, F>
+{
+    type Item = Result<SizeChecked<T>, E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut oversized = false;
+
+        if self.underlying.peek().map_or(true, |item| {
+            item.as_ref().map_or(true, |next_item| {
+                let next_size = (self.get_size)(next_item);
+
+                match self.current_size {
+                    Some(current_size) => {
+                        let new_current_size = next_size + current_size;
+                        if new_current_size <= self.max_size {
+                            self.current_size = Some(new_current_size);
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    None => {
+                        if next_size > self.max_size {
+                            oversized = true;
+                        }
+                        self.current_size = Some(next_size);
+
+                        true
+                    }
+                }
+            })
+        }) {
+            self.underlying.next().map(|result| {
+                result.map(|item| {
+                    if oversized {
+                        SizeChecked::Oversized(item)
+                    } else {
+                        SizeChecked::Valid(item)
+                    }
+                })
+            })
+        } else {
+            None
         }
     }
 }

@@ -204,7 +204,11 @@ fn schema_to_scope(
     let schema_impl = scope
         .new_impl(&schema.type_name)
         .impl_trait("parquetry::Schema")
-        .associate_type("SortColumn", "columns::SortColumn");
+        .associate_type("SortColumn", "columns::SortColumn")
+        .associate_type(
+            "Writer<W: std::io::Write + Send>",
+            format!("{}Writer<W>", schema.type_name),
+        );
 
     schema_impl
         .new_fn("sort_key_value")
@@ -224,25 +228,63 @@ fn schema_to_scope(
         .line("SCHEMA.clone()");
 
     schema_impl
-        .new_fn("write")
+        .new_fn("writer")
         .generic("W: std::io::Write + Send")
-        .generic("I: IntoIterator<Item = Vec<Self>>")
         .arg("writer", "W")
         .arg("properties", "parquet::file::properties::WriterProperties")
-        .arg("groups", "I")
-        .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
-        .push_block(code::gen_write_block()?);
+        .ret("Result<Self::Writer<W>, parquetry::error::Error>")
+        .push_block(code::gen_writer_block()?);
 
-    schema_impl
-        .new_fn("write_group")
-        .generic("W: std::io::Write + Send")
-        .arg(
-            "file_writer",
-            "&mut parquet::file::writer::SerializedFileWriter<W>",
-        )
-        .arg("group", "&[Self]")
+    let writer_struct = scope
+        .new_struct(&format!("{}Writer", schema.type_name))
+        .vis("pub")
+        .generic("W: std::io::Write");
+
+    writer_struct.new_field("writer", "parquet::file::writer::SerializedFileWriter<W>");
+    writer_struct.new_field("workspace", code::WORKSPACE_STRUCT_NAME);
+
+    let writer_impl = scope
+        .new_impl(&format!("{}Writer<W>", schema.type_name))
+        .impl_trait(format!("parquetry::SchemaWrite<{}, W>", schema.type_name))
+        .generic("W: std::io::Write + Send");
+
+    writer_impl
+        .new_fn("write_row_group")
+        .generic("'a")
+        .generic(format!(
+            "E: From<parquetry::error::Error>, I: Iterator<Item = Result<&'a {}, E>>",
+            schema.type_name
+        ))
+        .arg_mut_self()
+        .arg("values", "&mut I")
+        .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, E>")
+        .bound(&schema.type_name, "'a")
+        .push_block(code::gen_writer_write_row_group_block(schema)?);
+
+    writer_impl
+        .new_fn("write_item")
+        .arg_mut_self()
+        .arg("value", format!("&{}", schema.type_name))
+        .ret("Result<(), parquetry::error::Error>")
+        .line(format!(
+            "{}::add_item_to_workspace(&mut self.workspace, value)",
+            schema.type_name
+        ));
+
+    writer_impl
+        .new_fn("finish_row_group")
+        .arg_mut_self()
         .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
-        .push_block(code::gen_write_group_block()?);
+        .line(format!(
+            "{}::write_with_workspace(&mut self.writer, &mut self.workspace)",
+            schema.type_name
+        ));
+
+    writer_impl
+        .new_fn("finish")
+        .arg_self()
+        .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
+        .line("Ok(self.writer.close()?)");
 
     let row_conversion_impl = scope
         .new_impl(&schema.type_name)
@@ -280,10 +322,19 @@ fn schema_to_scope(
 
     base_impl
         .new_fn("fill_workspace")
+        .generic("'a")
+        .generic("E: From<parquetry::error::Error>, I: Iterator<Item = Result<&'a Self, E>>")
         .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
-        .arg("group", "&[Self]")
-        .ret("Result<usize, parquetry::error::Error>")
+        .arg("values", "I")
+        .ret("Result<usize, E>")
         .push_block(code::gen_fill_workspace_block(schema)?);
+
+    base_impl
+        .new_fn("add_item_to_workspace")
+        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
+        .arg("value", "&Self")
+        .ret("Result<(), parquetry::error::Error>")
+        .push_block(code::gen_add_item_to_workspace_block(schema)?);
 
     for gen_struct in schema.structs() {
         let base_impl = scope.new_impl(&gen_struct.type_name);
