@@ -228,20 +228,6 @@ impl parquetry::Schema for User {
     fn schema() -> parquet::schema::types::SchemaDescPtr {
         SCHEMA.clone()
     }
-    fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
-        writer: W,
-        properties: parquet::file::properties::WriterProperties,
-        groups: I,
-    ) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
-        {
-            use parquetry::SchemaWrite;
-            let mut writer = Self::writer(writer, properties)?;
-            for group in groups {
-                writer.write_group(group.iter())?;
-            }
-            writer.finish()
-        }
-    }
     fn writer<W: std::io::Write + Send>(
         writer: W,
         properties: parquet::file::properties::WriterProperties,
@@ -257,13 +243,27 @@ impl parquetry::Schema for User {
             })
         }
     }
+    fn write_row_groups<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+        groups: I,
+    ) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
+        {
+            use parquetry::SchemaWrite;
+            let mut writer = Self::writer(writer, properties)?;
+            for group in groups {
+                writer.write_row_group(group.iter())?;
+            }
+            writer.finish()
+        }
+    }
 }
 pub struct UserWriter<W: std::io::Write> {
     writer: parquet::file::writer::SerializedFileWriter<W>,
     workspace: ParquetryWorkspace,
 }
 impl<W: std::io::Write + Send> parquetry::SchemaWrite<User, W> for UserWriter<W> {
-    fn write_group<'a, I: Iterator<Item = &'a User>>(
+    fn write_row_group<'a, I: Iterator<Item = &'a User>>(
         &mut self,
         values: I,
     ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>
@@ -1419,7 +1419,7 @@ mod test {
         let test_dir = tempdir::TempDir::new("User-data").unwrap();
         let test_file_path = test_dir.path().join("write-data.parquet");
         let test_file = std::fs::File::create(&test_file_path).unwrap();
-        <super::User as parquetry::Schema>::write(
+        <super::User as parquetry::Schema>::write_row_groups(
                 test_file,
                 Default::default(),
                 groups.clone(),

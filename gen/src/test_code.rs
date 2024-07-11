@@ -176,7 +176,7 @@ fn gen_round_trip_write(type_name: &str) -> Vec<String> {
         format!("let test_dir = tempdir::TempDir::new(\"{}-data\").unwrap();", type_name),
         "let test_file_path = test_dir.path().join(\"write-data.parquet\");".to_string(),
         "let test_file = std::fs::File::create(&test_file_path).unwrap();".to_string(),
-        format!("<super::{} as parquetry::Schema>::write(test_file, Default::default(), groups.clone()).unwrap();", type_name),
+        format!("<super::{} as parquetry::Schema>::write_row_groups(test_file, Default::default(), groups.clone()).unwrap();", type_name),
         "let read_file = std::fs::File::open(test_file_path).unwrap();".to_string(),
         "let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();".to_string(),
         format!("let read_values = <super::{} as parquetry::Schema>::read(read_file, read_options).collect::<Result<Vec<_>, _>>().unwrap();", type_name),

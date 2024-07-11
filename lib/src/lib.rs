@@ -173,11 +173,13 @@ pub trait Schema: Sized {
         properties: parquet::file::properties::WriterProperties,
     ) -> Result<Self::Writer<W>, Error>;
 
-    fn write<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
+    fn write_row_groups<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
         writer: W,
         properties: parquet::file::properties::WriterProperties,
         groups: I,
     ) -> Result<parquet::format::FileMetaData, Error>;
+
+    //fn write_
 }
 
 pub enum SchemaIter<T> {
@@ -202,7 +204,7 @@ impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
 }
 
 pub trait SchemaWrite<T, W: std::io::Write> {
-    fn write_group<'a, I: Iterator<Item = &'a T>>(
+    fn write_row_group<'a, I: Iterator<Item = &'a T>>(
         &mut self,
         values: I,
     ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>

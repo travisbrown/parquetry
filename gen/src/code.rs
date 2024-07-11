@@ -462,19 +462,6 @@ fn gen_row_conversion_assignments(
     Ok(lines)
 }
 
-pub fn gen_write_block() -> Result<Block, Error> {
-    let mut block = Block::new("");
-
-    block.line("use parquetry::SchemaWrite;");
-    block.line("let mut writer = Self::writer(writer, properties)?;");
-    block.line("for group in groups {");
-    block.line("writer.write_group(group.iter())?;");
-    block.line("}");
-    block.line("writer.finish()");
-
-    Ok(block)
-}
-
 pub fn gen_writer_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
@@ -482,6 +469,19 @@ pub fn gen_writer_block() -> Result<Block, Error> {
     block.line("writer: parquet::file::writer::SerializedFileWriter::new(writer, SCHEMA.root_schema_ptr(), std::sync::Arc::new(properties))?,");
     block.line("workspace: Default::default()");
     block.line("})");
+
+    Ok(block)
+}
+
+pub fn gen_write_row_groups_block() -> Result<Block, Error> {
+    let mut block = Block::new("");
+
+    block.line("use parquetry::SchemaWrite;");
+    block.line("let mut writer = Self::writer(writer, properties)?;");
+    block.line("for group in groups {");
+    block.line("writer.write_row_group(group.iter())?;");
+    block.line("}");
+    block.line("writer.finish()");
 
     Ok(block)
 }

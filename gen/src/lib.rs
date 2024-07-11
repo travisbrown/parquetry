@@ -228,22 +228,22 @@ fn schema_to_scope(
         .line("SCHEMA.clone()");
 
     schema_impl
-        .new_fn("write")
-        .generic("W: std::io::Write + Send")
-        .generic("I: IntoIterator<Item = Vec<Self>>")
-        .arg("writer", "W")
-        .arg("properties", "parquet::file::properties::WriterProperties")
-        .arg("groups", "I")
-        .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
-        .push_block(code::gen_write_block()?);
-
-    schema_impl
         .new_fn("writer")
         .generic("W: std::io::Write + Send")
         .arg("writer", "W")
         .arg("properties", "parquet::file::properties::WriterProperties")
         .ret("Result<Self::Writer<W>, parquetry::error::Error>")
         .push_block(code::gen_writer_block()?);
+
+    schema_impl
+        .new_fn("write_row_groups")
+        .generic("W: std::io::Write + Send")
+        .generic("I: IntoIterator<Item = Vec<Self>>")
+        .arg("writer", "W")
+        .arg("properties", "parquet::file::properties::WriterProperties")
+        .arg("groups", "I")
+        .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
+        .push_block(code::gen_write_row_groups_block()?);
 
     let writer_struct = scope
         .new_struct(&format!("{}Writer", schema.type_name))
@@ -259,7 +259,7 @@ fn schema_to_scope(
         .generic("W: std::io::Write + Send");
 
     write_impl
-        .new_fn("write_group")
+        .new_fn("write_row_group")
         .generic("'a")
         .generic(format!("I: Iterator<Item = &'a {}>", schema.type_name))
         .arg_mut_self()
