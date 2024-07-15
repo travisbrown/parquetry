@@ -235,6 +235,7 @@ fn schema_to_scope(
         .ret("Result<Self::Writer<W>, parquetry::error::Error>")
         .push_block(code::gen_writer_block()?);
 
+    /*
     schema_impl
         .new_fn("write_row_groups")
         .generic("W: std::io::Write + Send")
@@ -244,6 +245,7 @@ fn schema_to_scope(
         .arg("groups", "I")
         .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
         .push_block(code::gen_write_row_groups_block()?);
+    */
 
     let writer_struct = scope
         .new_struct(&format!("{}Writer", schema.type_name))

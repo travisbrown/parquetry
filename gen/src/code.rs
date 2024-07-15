@@ -473,7 +473,7 @@ pub fn gen_writer_block() -> Result<Block, Error> {
     Ok(block)
 }
 
-pub fn gen_write_row_groups_block() -> Result<Block, Error> {
+/*pub fn gen_write_row_groups_block() -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line("use parquetry::SchemaWrite;");
@@ -484,7 +484,7 @@ pub fn gen_write_row_groups_block() -> Result<Block, Error> {
     block.line("writer.finish()");
 
     Ok(block)
-}
+}*/
 
 pub fn gen_write_write_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");

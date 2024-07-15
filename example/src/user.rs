@@ -243,20 +243,6 @@ impl parquetry::Schema for User {
             })
         }
     }
-    fn write_row_groups<W: std::io::Write + Send, I: IntoIterator<Item = Vec<Self>>>(
-        writer: W,
-        properties: parquet::file::properties::WriterProperties,
-        groups: I,
-    ) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
-        {
-            use parquetry::SchemaWrite;
-            let mut writer = Self::writer(writer, properties)?;
-            for group in groups {
-                writer.write_row_group(group.iter())?;
-            }
-            writer.finish()
-        }
-    }
 }
 pub struct UserWriter<W: std::io::Write> {
     writer: parquet::file::writer::SerializedFileWriter<W>,

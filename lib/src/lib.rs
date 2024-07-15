@@ -1,3 +1,4 @@
+use std::iter::Peekable;
 use std::marker::PhantomData;
 
 use parquet::{
@@ -177,9 +178,36 @@ pub trait Schema: Sized {
         writer: W,
         properties: parquet::file::properties::WriterProperties,
         groups: I,
-    ) -> Result<parquet::format::FileMetaData, Error>;
+    ) -> Result<parquet::format::FileMetaData, Error> {
+        let mut writer = Self::writer(writer, properties)?;
 
-    //fn write_
+        for group in groups {
+            writer.write_row_group(group.iter())?;
+        }
+        writer.finish()
+    }
+
+    fn write<
+        W: std::io::Write + Send,
+        E: From<Error>,
+        I: IntoIterator<Item = Result<Self, E>>,
+        S: std::ops::Add + Default,
+        F: Fn(Self) -> S,
+    >(
+        writer: W,
+        properties: parquet::file::properties::WriterProperties,
+        max_size: S,
+        get_size: F,
+        items: I,
+    ) -> Result<parquet::format::FileMetaData, E> {
+        let mut writer = Self::writer(writer, properties)?;
+
+        /*for group in groups {
+            writer.write_row_group(group.iter())?;
+        }*/
+
+        writer.finish().map_err(E::from)
+    }
 }
 
 pub enum SchemaIter<T> {
@@ -212,4 +240,76 @@ pub trait SchemaWrite<T, W: std::io::Write> {
         T: 'a;
 
     fn finish(self) -> Result<parquet::format::FileMetaData, Error>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
+pub enum SizeChecked<T> {
+    Valid(T),
+    Oversized(T),
+}
+
+impl<T> From<SizeChecked<T>> for Result<T, T> {
+    fn from(value: SizeChecked<T>) -> Self {
+        match value {
+            SizeChecked::Valid(value) => Ok(value),
+            SizeChecked::Oversized(value) => Err(value),
+        }
+    }
+}
+
+struct RowGroupSplitter<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> {
+    underlying: Peekable<I>,
+    max_size: S,
+    get_size: F,
+    current_size: Option<S>,
+}
+
+impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> Iterator
+    for RowGroupSplitter<T, S, E, I, F>
+where
+    for<'a> &'a S: std::ops::Add<Output = S> + PartialOrd,
+{
+    type Item = Result<SizeChecked<T>, E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut oversized = false;
+
+        if self.underlying.peek().map_or(true, |item| {
+            item.as_ref().map_or(true, |next_item| {
+                let next_size = (self.get_size)(next_item);
+
+                match &self.current_size {
+                    Some(current_size) => {
+                        let new_current_size = &next_size + current_size;
+                        if &new_current_size <= &self.max_size {
+                            self.current_size = Some(new_current_size);
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    None => {
+                        if &next_size > &self.max_size {
+                            oversized = true;
+                        }
+                        self.current_size = Some(next_size);
+
+                        true
+                    }
+                }
+            })
+        }) {
+            self.underlying.next().map(|result| {
+                result.map(|item| {
+                    if oversized {
+                        SizeChecked::Oversized(item)
+                    } else {
+                        SizeChecked::Valid(item)
+                    }
+                })
+            })
+        } else {
+            None
+        }
+    }
 }
