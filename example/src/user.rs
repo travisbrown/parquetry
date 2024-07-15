@@ -249,16 +249,28 @@ pub struct UserWriter<W: std::io::Write> {
     workspace: ParquetryWorkspace,
 }
 impl<W: std::io::Write + Send> parquetry::SchemaWrite<User, W> for UserWriter<W> {
-    fn write_row_group<'a, I: Iterator<Item = &'a User>>(
-        &mut self,
-        values: I,
-    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>
+    fn write_row_group<
+        'a,
+        E: From<parquetry::error::Error>,
+        I: Iterator<Item = Result<&'a User, E>>,
+    >(&mut self, values: I) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, E>
     where
         User: 'a,
     {
         {
-            User::fill_workspace(&mut self.workspace, values)?;
+            User::fill_workspace(
+                    &mut self.workspace,
+                    values
+                        .map(|result| match result {
+                            Ok(item) => item,
+                            Err(error) => {
+                                return E::from(error);
+                            }
+                        }),
+                )
+                .map_err(E::from)?;
             User::write_with_workspace(&mut self.writer, &mut self.workspace)
+                .map_err(E::from)
         }
     }
     fn finish(self) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {

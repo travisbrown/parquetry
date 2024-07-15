@@ -473,28 +473,15 @@ pub fn gen_writer_block() -> Result<Block, Error> {
     Ok(block)
 }
 
-/*pub fn gen_write_row_groups_block() -> Result<Block, Error> {
-    let mut block = Block::new("");
-
-    block.line("use parquetry::SchemaWrite;");
-    block.line("let mut writer = Self::writer(writer, properties)?;");
-    block.line("for group in groups {");
-    block.line("writer.write_row_group(group.iter())?;");
-    block.line("}");
-    block.line("writer.finish()");
-
-    Ok(block)
-}*/
-
-pub fn gen_write_write_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+pub fn gen_write_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line(format!(
-        "{}::fill_workspace(&mut self.workspace, values)?;",
+        "{}::fill_workspace(&mut self.workspace, values.map(|result| match result {{ Ok(item) => item, Err(error) => {{return E::from(error); }}}})).map_err(E::from)?;",
         gen_schema.type_name
     ));
     block.line(format!(
-        "{}::write_with_workspace(&mut self.writer, &mut self.workspace)",
+        "{}::write_with_workspace(&mut self.writer, &mut self.workspace).map_err(E::from)",
         gen_schema.type_name
     ));
 

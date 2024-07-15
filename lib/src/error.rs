@@ -6,6 +6,8 @@ pub enum Error {
     Parquet(#[from] parquet::errors::ParquetError),
     #[error("Field error")]
     InvalidField(String),
+    #[error("Oversized row value error")]
+    OversizedRowValue { row_group_index: Option<usize> },
 }
 
 #[derive(thiserror::Error, Debug)]

@@ -182,7 +182,7 @@ pub trait Schema: Sized {
         let mut writer = Self::writer(writer, properties)?;
 
         for group in groups {
-            writer.write_row_group(group.iter())?;
+            writer.write_row_group::<Error, _>(group.iter().map(Ok))?;
         }
         writer.finish()
     }
@@ -190,17 +190,24 @@ pub trait Schema: Sized {
     fn write<
         W: std::io::Write + Send,
         E: From<Error>,
-        I: IntoIterator<Item = Result<Self, E>>,
+        I: Iterator<Item = Result<Self, E>>,
         S: std::ops::Add + Default,
-        F: Fn(Self) -> S,
+        F: Fn(&Self) -> S,
     >(
         writer: W,
         properties: parquet::file::properties::WriterProperties,
         max_size: S,
         get_size: F,
+        fail_on_oversized: bool,
         items: I,
     ) -> Result<parquet::format::FileMetaData, E> {
         let mut writer = Self::writer(writer, properties)?;
+        let mut row_group_splitter = RowGroupSplitter::new(items, max_size, get_size);
+        let mut row_group_index = 0;
+
+        while row_group_splitter.reset() {
+            row_group_index += 1;
+        }
 
         /*for group in groups {
             writer.write_row_group(group.iter())?;
@@ -232,10 +239,10 @@ impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
 }
 
 pub trait SchemaWrite<T, W: std::io::Write> {
-    fn write_row_group<'a, I: Iterator<Item = &'a T>>(
+    fn write_row_group<'a, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>>(
         &mut self,
         values: I,
-    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, E>
     where
         T: 'a;
 
@@ -257,14 +264,33 @@ impl<T> From<SizeChecked<T>> for Result<T, T> {
     }
 }
 
-struct RowGroupSplitter<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> {
+struct RowGroupSplitter<T, S, E, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> {
     underlying: Peekable<I>,
     max_size: S,
     get_size: F,
     current_size: Option<S>,
 }
 
-impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> Iterator
+impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S>
+    RowGroupSplitter<T, S, E, I, F>
+{
+    fn new(underlying: I, max_size: S, get_size: F) -> Self {
+        Self {
+            underlying: underlying.peekable(),
+            max_size,
+            get_size,
+            current_size: None,
+        }
+    }
+
+    fn reset(&mut self) -> bool {
+        self.current_size = None;
+
+        self.underlying.peek().is_some()
+    }
+}
+
+impl<T, S, E, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> Iterator
     for RowGroupSplitter<T, S, E, I, F>
 where
     for<'a> &'a S: std::ops::Add<Output = S> + PartialOrd,
