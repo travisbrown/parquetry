@@ -1362,7 +1362,7 @@ mod test {
             Self::new(
                     {
                         let mut value: String = quickcheck::Arbitrary::arbitrary(g);
-                        value.retain(|char| char != ' ');
+                        value.retain(|char| char != '\0');
                         value
                     },
                     <_>::arbitrary(g),
@@ -1375,7 +1375,7 @@ mod test {
             Self::new(
                     {
                         let mut value: String = quickcheck::Arbitrary::arbitrary(g);
-                        value.retain(|char| char != ' ');
+                        value.retain(|char| char != '\0');
                         value
                     },
                     <_>::arbitrary(g),
@@ -1399,12 +1399,12 @@ mod test {
                     ),
                     {
                         let mut value: String = quickcheck::Arbitrary::arbitrary(g);
-                        value.retain(|char| char != ' ');
+                        value.retain(|char| char != '\0');
                         value
                     },
                     {
                         let mut value: String = quickcheck::Arbitrary::arbitrary(g);
-                        value.retain(|char| char != ' ');
+                        value.retain(|char| char != '\0');
                         value
                     },
                     {
@@ -1412,7 +1412,7 @@ mod test {
                         optional
                             .map(|_| {
                                 let mut value: String = quickcheck::Arbitrary::arbitrary(g);
-                                value.retain(|char| char != ' ');
+                                value.retain(|char| char != '\0');
                                 value
                             })
                     },
