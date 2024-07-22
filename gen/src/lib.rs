@@ -256,7 +256,7 @@ fn schema_to_scope(
             schema.type_name
         ))
         .arg_mut_self()
-        .arg("values", "I")
+        .arg("values", "&mut I")
         .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, E>")
         .bound(&schema.type_name, "'a")
         .push_block(code::gen_write_write_row_group_block(schema)?);
@@ -304,10 +304,10 @@ fn schema_to_scope(
     base_impl
         .new_fn("fill_workspace")
         .generic("'a")
-        .generic("I: Iterator<Item = &'a Self>")
+        .generic("E: From<parquetry::error::Error>, I: Iterator<Item = Result<&'a Self, E>>")
         .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
-        .arg("group", "I")
-        .ret("Result<usize, parquetry::error::Error>")
+        .arg("values", "I")
+        .ret("Result<usize, E>")
         .push_block(code::gen_fill_workspace_block(schema)?);
 
     for gen_struct in schema.structs() {

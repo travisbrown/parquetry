@@ -477,7 +477,7 @@ pub fn gen_write_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, 
     let mut block = Block::new("");
 
     block.line(format!(
-        "{}::fill_workspace(&mut self.workspace, values.map(|result| match result {{ Ok(item) => item, Err(error) => {{return E::from(error); }}}})).map_err(E::from)?;",
+        "{}::fill_workspace(&mut self.workspace, values)?;",
         gen_schema.type_name
     ));
     block.line(format!(
@@ -491,9 +491,10 @@ pub fn gen_write_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, 
 pub fn gen_fill_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
     block.line("let mut written_count_ = 0;");
+    block.line("for result in values {");
 
     block.line(format!(
-        "for {} {{ {} }} in group {{",
+        "let {} {{ {} }} = result?;",
         gen_schema.type_name,
         gen_schema.field_names().join(", ")
     ));

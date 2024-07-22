@@ -106,7 +106,7 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
                     }
 
                     group_counts.push(group.len());
-                    writer.write_row_group::<Error, _>(group.iter().map(Ok))?;
+                    writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
                     group.clear();
                     current_bytes = 0;
                 }
@@ -118,7 +118,7 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
 
         if !group.is_empty() {
             group_counts.push(group.len());
-            writer.write_row_group::<Error, _>(group.iter().map(Ok))?;
+            writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
         }
 
         writer.finish()?;

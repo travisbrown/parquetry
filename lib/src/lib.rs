@@ -182,16 +182,17 @@ pub trait Schema: Sized {
         let mut writer = Self::writer(writer, properties)?;
 
         for group in groups {
-            writer.write_row_group::<Error, _>(group.iter().map(Ok))?;
+            writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
         }
         writer.finish()
     }
 
     fn write<
+        'a,
         W: std::io::Write + Send,
         E: From<Error>,
-        I: Iterator<Item = Result<Self, E>>,
-        S: std::ops::Add + Default,
+        I: Iterator<Item = Result<&'a Self, E>>,
+        S: Copy + std::ops::Add<Output = S> + PartialOrd,
         F: Fn(&Self) -> S,
     >(
         writer: W,
@@ -200,17 +201,49 @@ pub trait Schema: Sized {
         get_size: F,
         fail_on_oversized: bool,
         items: I,
-    ) -> Result<parquet::format::FileMetaData, E> {
+    ) -> Result<parquet::format::FileMetaData, E>
+    where
+        Self: 'a,
+    {
         let mut writer = Self::writer(writer, properties)?;
         let mut row_group_splitter = RowGroupSplitter::new(items, max_size, get_size);
         let mut row_group_index = 0;
 
-        while row_group_splitter.reset() {
-            row_group_index += 1;
-        }
+        /*while row_group_splitter.reset() {
+            /*if fail_on_oversized {
+                writer.write_row_group(&mut row_group_splitter.map(|result| {
+                    result.and_then(|size_checked| match size_checked {
+                        SizeChecked::Valid(value) => Ok(value),
+                        SizeChecked::Oversized(_) => Err(E::from(Error::OversizedRowValue {
+                            row_group_index: Some(row_group_index),
+                        })),
+                    })
+                }))?;
+            } else {
+                writer.write_row_group(
+                    &mut row_group_splitter
+                        .map(|result| result.map(|size_checked| size_checked.merge())),
+                )?;
+            }*/
+            //while let Some(values) = row_group_splitter.next() {
+            //for values in row_group_splitter {
+            /*let values = if fail_on_oversized {
+                values.map(|result| {
+                    result.and_then(|size_checked| match size_checked {
+                        SizeChecked::Valid(value) => Ok(value),
+                        SizeChecked::Oversized(_) => Err(Error::OversizedRowValue {
+                            row_group_index: Some(row_group_index),
+                        }),
+                    })
+                })
+            } else {
+                values.map(|result| result.map(|size_checked| size_checked.merge()))
+            };*/
+            //}
 
-        /*for group in groups {
-            writer.write_row_group(group.iter())?;
+            //writer.write_row_group::<Error, _>(&mut row_group_splitter)?;
+
+            row_group_index += 1;
         }*/
 
         writer.finish().map_err(E::from)
@@ -241,7 +274,7 @@ impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
 pub trait SchemaWrite<T, W: std::io::Write> {
     fn write_row_group<'a, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>>(
         &mut self,
-        values: I,
+        values: &mut I,
     ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, E>
     where
         T: 'a;
@@ -255,6 +288,15 @@ pub enum SizeChecked<T> {
     Oversized(T),
 }
 
+impl<T> SizeChecked<T> {
+    fn merge(self) -> T {
+        match self {
+            Self::Valid(value) => value,
+            Self::Oversized(value) => value,
+        }
+    }
+}
+
 impl<T> From<SizeChecked<T>> for Result<T, T> {
     fn from(value: SizeChecked<T>) -> Self {
         match value {
@@ -264,15 +306,15 @@ impl<T> From<SizeChecked<T>> for Result<T, T> {
     }
 }
 
-struct RowGroupSplitter<T, S, E, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> {
+struct RowGroupSplitter<'a, T: 'a, S, E, I: Iterator<Item = Result<&'a T, E>>, F: Fn(&T) -> S> {
     underlying: Peekable<I>,
     max_size: S,
     get_size: F,
     current_size: Option<S>,
 }
 
-impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S>
-    RowGroupSplitter<T, S, E, I, F>
+impl<'a, T: 'a, S, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>, F: Fn(&T) -> S>
+    RowGroupSplitter<'a, T, S, E, I, F>
 {
     fn new(underlying: I, max_size: S, get_size: F) -> Self {
         Self {
@@ -290,12 +332,16 @@ impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S>
     }
 }
 
-impl<T, S, E, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> Iterator
-    for RowGroupSplitter<T, S, E, I, F>
-where
-    for<'a> &'a S: std::ops::Add<Output = S> + PartialOrd,
+impl<
+        'a,
+        T: 'a,
+        S: Copy + std::ops::Add<Output = S> + PartialOrd,
+        E,
+        I: Iterator<Item = Result<&'a T, E>>,
+        F: Fn(&T) -> S,
+    > Iterator for RowGroupSplitter<'a, T, S, E, I, F>
 {
-    type Item = Result<SizeChecked<T>, E>;
+    type Item = Result<SizeChecked<&'a T>, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut oversized = false;
@@ -304,10 +350,10 @@ where
             item.as_ref().map_or(true, |next_item| {
                 let next_size = (self.get_size)(next_item);
 
-                match &self.current_size {
+                match self.current_size {
                     Some(current_size) => {
-                        let new_current_size = &next_size + current_size;
-                        if &new_current_size <= &self.max_size {
+                        let new_current_size = next_size + current_size;
+                        if new_current_size <= self.max_size {
                             self.current_size = Some(new_current_size);
                             true
                         } else {

@@ -253,22 +253,15 @@ impl<W: std::io::Write + Send> parquetry::SchemaWrite<User, W> for UserWriter<W>
         'a,
         E: From<parquetry::error::Error>,
         I: Iterator<Item = Result<&'a User, E>>,
-    >(&mut self, values: I) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, E>
+    >(
+        &mut self,
+        values: &mut I,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, E>
     where
         User: 'a,
     {
         {
-            User::fill_workspace(
-                    &mut self.workspace,
-                    values
-                        .map(|result| match result {
-                            Ok(item) => item,
-                            Err(error) => {
-                                return E::from(error);
-                            }
-                        }),
-                )
-                .map_err(E::from)?;
+            User::fill_workspace(&mut self.workspace, values)?;
             User::write_with_workspace(&mut self.writer, &mut self.workspace)
                 .map_err(E::from)
         }
@@ -1001,13 +994,15 @@ impl User {
             Ok(row_group_writer.close()?)
         }
     }
-    fn fill_workspace<'a, I: Iterator<Item = &'a Self>>(
-        workspace: &mut ParquetryWorkspace,
-        group: I,
-    ) -> Result<usize, parquetry::error::Error> {
+    fn fill_workspace<
+        'a,
+        E: From<parquetry::error::Error>,
+        I: Iterator<Item = Result<&'a Self, E>>,
+    >(workspace: &mut ParquetryWorkspace, values: I) -> Result<usize, E> {
         {
             let mut written_count_ = 0;
-            for User { id, ts, status, user_info } in group {
+            for result in values {
+                let User { id, ts, status, user_info } = result?;
                 workspace.values_0000.push(*id as i64);
                 workspace.values_0001.push(ts.timestamp_millis());
                 match status {
