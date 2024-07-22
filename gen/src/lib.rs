@@ -310,6 +310,13 @@ fn schema_to_scope(
         .ret("Result<usize, E>")
         .push_block(code::gen_fill_workspace_block(schema)?);
 
+    base_impl
+        .new_fn("add_item_to_workspace")
+        .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
+        .arg("value", "&Self")
+        .ret("Result<(), parquetry::error::Error>")
+        .push_block(code::gen_add_item_to_workspace_block(schema)?);
+
     for gen_struct in schema.structs() {
         let base_impl = scope.new_impl(&gen_struct.type_name);
 
