@@ -188,10 +188,9 @@ pub trait Schema: Sized {
     }
 
     fn write<
-        'a,
         W: std::io::Write + Send,
         E: From<Error>,
-        I: Iterator<Item = Result<&'a Self, E>>,
+        I: Iterator<Item = Result<Self, E>>,
         S: Copy + std::ops::Add<Output = S> + PartialOrd,
         F: Fn(&Self) -> S,
     >(
@@ -201,10 +200,7 @@ pub trait Schema: Sized {
         get_size: F,
         fail_on_oversized: bool,
         items: I,
-    ) -> Result<parquet::format::FileMetaData, E>
-    where
-        Self: 'a,
-    {
+    ) -> Result<parquet::format::FileMetaData, E> {
         let mut writer = Self::writer(writer, properties)?;
         let mut row_group_splitter = RowGroupSplitter::new(items, max_size, get_size);
         let mut row_group_index = 0;
@@ -213,7 +209,7 @@ pub trait Schema: Sized {
             if fail_on_oversized {
                 while let Some(result) = row_group_splitter.next() {
                     match result {
-                        Ok(SizeChecked::Valid(value)) => writer.write_item(value).map_err(E::from),
+                        Ok(SizeChecked::Valid(value)) => writer.write_item(&value).map_err(E::from),
                         Ok(SizeChecked::Oversized(_)) => Err(E::from(Error::OversizedRowValue {
                             row_group_index: Some(row_group_index),
                         })),
@@ -281,7 +277,7 @@ pub enum SizeChecked<T> {
 }
 
 impl<T> SizeChecked<T> {
-    fn merge(self) -> T {
+    fn merge(&self) -> &T {
         match self {
             Self::Valid(value) => value,
             Self::Oversized(value) => value,
@@ -298,15 +294,15 @@ impl<T> From<SizeChecked<T>> for Result<T, T> {
     }
 }
 
-struct RowGroupSplitter<'a, T: 'a, S, E, I: Iterator<Item = Result<&'a T, E>>, F: Fn(&T) -> S> {
+struct RowGroupSplitter<T, S, E, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S> {
     underlying: Peekable<I>,
     max_size: S,
     get_size: F,
     current_size: Option<S>,
 }
 
-impl<'a, T: 'a, S, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>, F: Fn(&T) -> S>
-    RowGroupSplitter<'a, T, S, E, I, F>
+impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S>
+    RowGroupSplitter<T, S, E, I, F>
 {
     fn new(underlying: I, max_size: S, get_size: F) -> Self {
         Self {
@@ -325,15 +321,14 @@ impl<'a, T: 'a, S, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>, F: Fn(&
 }
 
 impl<
-        'a,
-        T: 'a,
+        T,
         S: Copy + std::ops::Add<Output = S> + PartialOrd,
         E,
-        I: Iterator<Item = Result<&'a T, E>>,
+        I: Iterator<Item = Result<T, E>>,
         F: Fn(&T) -> S,
-    > Iterator for RowGroupSplitter<'a, T, S, E, I, F>
+    > Iterator for RowGroupSplitter<T, S, E, I, F>
 {
-    type Item = Result<SizeChecked<&'a T>, E>;
+    type Item = Result<SizeChecked<T>, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut oversized = false;
