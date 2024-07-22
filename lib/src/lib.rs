@@ -207,7 +207,7 @@ pub trait Schema: Sized {
 
         while row_group_splitter.reset() {
             if fail_on_oversized {
-                while let Some(result) = row_group_splitter.next() {
+                for result in row_group_splitter.by_ref() {
                     match result {
                         Ok(SizeChecked::Valid(value)) => writer.write_item(&value).map_err(E::from),
                         Ok(SizeChecked::Oversized(_)) => Err(E::from(Error::OversizedRowValue {
@@ -217,7 +217,7 @@ pub trait Schema: Sized {
                     }?;
                 }
             } else {
-                while let Some(result) = row_group_splitter.next() {
+                for result in row_group_splitter.by_ref() {
                     match result {
                         Ok(size_checked) => {
                             writer.write_item(size_checked.merge()).map_err(E::from)
@@ -348,7 +348,7 @@ impl<
                         }
                     }
                     None => {
-                        if &next_size > &self.max_size {
+                        if next_size > self.max_size {
                             oversized = true;
                         }
                         self.current_size = Some(next_size);
