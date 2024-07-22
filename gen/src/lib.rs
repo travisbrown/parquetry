@@ -243,12 +243,12 @@ fn schema_to_scope(
     writer_struct.new_field("writer", "parquet::file::writer::SerializedFileWriter<W>");
     writer_struct.new_field("workspace", code::WORKSPACE_STRUCT_NAME);
 
-    let write_impl = scope
+    let writer_impl = scope
         .new_impl(&format!("{}Writer<W>", schema.type_name))
         .impl_trait(format!("parquetry::SchemaWrite<{}, W>", schema.type_name))
         .generic("W: std::io::Write + Send");
 
-    write_impl
+    writer_impl
         .new_fn("write_row_group")
         .generic("'a")
         .generic(format!(
@@ -259,9 +259,28 @@ fn schema_to_scope(
         .arg("values", "&mut I")
         .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, E>")
         .bound(&schema.type_name, "'a")
-        .push_block(code::gen_write_write_row_group_block(schema)?);
+        .push_block(code::gen_writer_write_row_group_block(schema)?);
 
-    write_impl
+    writer_impl
+        .new_fn("write_item")
+        .arg_mut_self()
+        .arg("value", format!("&{}", schema.type_name))
+        .ret("Result<(), parquetry::error::Error>")
+        .line(format!(
+            "{}::add_item_to_workspace(&mut self.workspace, value)",
+            schema.type_name
+        ));
+
+    writer_impl
+        .new_fn("finish_row_group")
+        .arg_mut_self()
+        .ret("Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error>")
+        .line(format!(
+            "{}::write_with_workspace(&mut self.writer, &mut self.workspace)",
+            schema.type_name
+        ));
+
+    writer_impl
         .new_fn("finish")
         .arg_self()
         .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")

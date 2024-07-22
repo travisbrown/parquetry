@@ -473,7 +473,7 @@ pub fn gen_writer_block() -> Result<Block, Error> {
     Ok(block)
 }
 
-pub fn gen_write_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+pub fn gen_writer_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
 
     block.line(format!(
@@ -490,15 +490,13 @@ pub fn gen_write_write_row_group_block(gen_schema: &GenSchema) -> Result<Block, 
 
 pub fn gen_fill_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> {
     let mut block = Block::new("");
-    block.line("let mut written_count_ = 0;");
+    block.line("let mut written_count = 0;");
     block.line("for result in values {");
-
     block.line("Self::add_item_to_workspace(workspace, result?)?;");
-
-    block.line("written_count_ += 1;");
+    block.line("written_count += 1;");
     block.line("}");
 
-    block.line("Ok(written_count_)");
+    block.line("Ok(written_count)");
 
     Ok(block)
 }

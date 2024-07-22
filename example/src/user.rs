@@ -266,6 +266,14 @@ impl<W: std::io::Write + Send> parquetry::SchemaWrite<User, W> for UserWriter<W>
                 .map_err(E::from)
         }
     }
+    fn write_item(&mut self, value: &User) -> Result<(), parquetry::error::Error> {
+        User::add_item_to_workspace(&mut self.workspace, value)
+    }
+    fn finish_row_group(
+        &mut self,
+    ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
+        User::write_with_workspace(&mut self.writer, &mut self.workspace)
+    }
     fn finish(self) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
         Ok(self.writer.close()?)
     }
@@ -1000,12 +1008,12 @@ impl User {
         I: Iterator<Item = Result<&'a Self, E>>,
     >(workspace: &mut ParquetryWorkspace, values: I) -> Result<usize, E> {
         {
-            let mut written_count_ = 0;
+            let mut written_count = 0;
             for result in values {
                 Self::add_item_to_workspace(workspace, result?)?;
-                written_count_ += 1;
+                written_count += 1;
             }
-            Ok(written_count_)
+            Ok(written_count)
         }
     }
     fn add_item_to_workspace(
