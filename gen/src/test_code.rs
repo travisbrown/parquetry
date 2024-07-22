@@ -78,7 +78,7 @@ fn gen_valid_string(optional: bool) -> String {
     let mut value = String::new();
     value.push('{');
     value.push_str("let mut value: String = quickcheck::Arbitrary::arbitrary(g);");
-    value.push_str("value.retain(|char| char != '\0');");
+    value.push_str("value.retain(|char| char != '\\0');");
     value.push_str("value");
     value.push('}');
 
