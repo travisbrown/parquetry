@@ -209,42 +209,31 @@ pub trait Schema: Sized {
         let mut row_group_splitter = RowGroupSplitter::new(items, max_size, get_size);
         let mut row_group_index = 0;
 
-        /*while row_group_splitter.reset() {
-            /*if fail_on_oversized {
-                writer.write_row_group(&mut row_group_splitter.map(|result| {
-                    result.and_then(|size_checked| match size_checked {
-                        SizeChecked::Valid(value) => Ok(value),
-                        SizeChecked::Oversized(_) => Err(E::from(Error::OversizedRowValue {
+        while row_group_splitter.reset() {
+            if fail_on_oversized {
+                while let Some(result) = row_group_splitter.next() {
+                    match result {
+                        Ok(SizeChecked::Valid(value)) => writer.write_item(value).map_err(E::from),
+                        Ok(SizeChecked::Oversized(_)) => Err(E::from(Error::OversizedRowValue {
                             row_group_index: Some(row_group_index),
                         })),
-                    })
-                }))?;
+                        Err(error) => Err(error),
+                    }?;
+                }
             } else {
-                writer.write_row_group(
-                    &mut row_group_splitter
-                        .map(|result| result.map(|size_checked| size_checked.merge())),
-                )?;
-            }*/
-            //while let Some(values) = row_group_splitter.next() {
-            //for values in row_group_splitter {
-            /*let values = if fail_on_oversized {
-                values.map(|result| {
-                    result.and_then(|size_checked| match size_checked {
-                        SizeChecked::Valid(value) => Ok(value),
-                        SizeChecked::Oversized(_) => Err(Error::OversizedRowValue {
-                            row_group_index: Some(row_group_index),
-                        }),
-                    })
-                })
-            } else {
-                values.map(|result| result.map(|size_checked| size_checked.merge()))
-            };*/
-            //}
-
-            //writer.write_row_group::<Error, _>(&mut row_group_splitter)?;
+                while let Some(result) = row_group_splitter.next() {
+                    match result {
+                        Ok(size_checked) => {
+                            writer.write_item(size_checked.merge()).map_err(E::from)
+                        }
+                        Err(error) => Err(error),
+                    }?;
+                }
+            }
+            writer.finish_row_group()?;
 
             row_group_index += 1;
-        }*/
+        }
 
         writer.finish().map_err(E::from)
     }
