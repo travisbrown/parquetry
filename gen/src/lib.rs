@@ -213,7 +213,7 @@ fn schema_to_scope(
     schema_impl
         .new_fn("sort_key_value")
         .arg_ref_self()
-        .arg("sort_key", "parquetry::SortKey<Self::SortColumn>")
+        .arg("sort_key", "parquetry::sort::SortKey<Self::SortColumn>")
         .ret("Vec<u8>")
         .push_block(code::gen_sort_key_value_block());
 
@@ -304,7 +304,7 @@ fn schema_to_scope(
         .arg_ref_self()
         .arg(
             "column",
-            "parquetry::Sort<<Self as parquetry::Schema>::SortColumn>",
+            "parquetry::sort::Sort<<Self as parquetry::Schema>::SortColumn>",
         )
         .arg("bytes", "&mut Vec<u8>")
         .push_block(code::gen_write_sort_key_bytes_block(schema)?);

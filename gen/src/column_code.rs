@@ -48,7 +48,7 @@ pub fn add_column_info_modules(scope: &mut Scope, gen_columns: &[GenColumn]) {
     if !sort_column_names.is_empty() {
         let sort_column_impl = module
             .new_impl("SortColumn")
-            .impl_trait("parquetry::SortColumn");
+            .impl_trait("parquetry::sort::SortColumn");
 
         let sort_column_index = sort_column_impl.new_fn("index").arg_ref_self().ret("usize");
 

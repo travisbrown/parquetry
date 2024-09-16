@@ -86,7 +86,7 @@ pub mod columns {
         FavouritesCount,
         StatusesCount,
     }
-    impl parquetry::SortColumn for SortColumn {
+    impl parquetry::sort::SortColumn for SortColumn {
         fn index(&self) -> usize {
             match self {
                 Self::Id => 0,
@@ -213,7 +213,10 @@ pub mod columns {
 impl parquetry::Schema for User {
     type SortColumn = columns::SortColumn;
     type Writer<W: std::io::Write + Send> = UserWriter<W>;
-    fn sort_key_value(&self, sort_key: parquetry::SortKey<Self::SortColumn>) -> Vec<u8> {
+    fn sort_key_value(
+        &self,
+        sort_key: parquetry::sort::SortKey<Self::SortColumn>,
+    ) -> Vec<u8> {
         {
             let mut bytes = vec![];
             for column in sort_key.columns() {
@@ -601,7 +604,7 @@ impl TryFrom<parquet::record::Row> for User {
 impl User {
     fn write_sort_key_bytes(
         &self,
-        column: parquetry::Sort<<Self as parquetry::Schema>::SortColumn>,
+        column: parquetry::sort::Sort<<Self as parquetry::Schema>::SortColumn>,
         bytes: &mut Vec<u8>,
     ) {
         match column.column {

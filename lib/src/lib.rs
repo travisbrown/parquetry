@@ -13,8 +13,10 @@ use parquet::{
 };
 
 pub mod error;
+pub mod sort;
 
 use crate::error::Error;
+use crate::sort::SortColumn;
 
 pub struct ColumnInfo {
     pub index: usize,
@@ -31,89 +33,6 @@ impl ColumnInfo {
     }
 }
 
-pub trait SortColumn {
-    fn index(&self) -> usize;
-}
-
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct Sort<C> {
-    pub column: C,
-    pub descending: bool,
-    pub nulls_first: bool,
-}
-
-impl<C: Copy> Sort<C> {
-    pub fn new(column: C) -> Self {
-        Self {
-            column,
-            descending: false,
-            nulls_first: false,
-        }
-    }
-
-    pub fn descending(&self) -> Self {
-        Self {
-            column: self.column,
-            descending: true,
-            nulls_first: self.nulls_first,
-        }
-    }
-
-    pub fn nulls_first(&self) -> Self {
-        Self {
-            column: self.column,
-            descending: self.descending,
-            nulls_first: true,
-        }
-    }
-
-    pub fn sorting_column(&self) -> SortingColumn
-    where
-        C: SortColumn,
-    {
-        SortingColumn::new(
-            self.column.index() as i32,
-            self.descending,
-            self.nulls_first,
-        )
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum SortKey<C> {
-    Columns1(Sort<C>),
-    Columns2(Sort<C>, Sort<C>),
-    Columns3(Sort<C>, Sort<C>, Sort<C>),
-    Columns4(Sort<C>, Sort<C>, Sort<C>, Sort<C>),
-    Columns5(Sort<C>, Sort<C>, Sort<C>, Sort<C>, Sort<C>),
-}
-
-impl<C: Copy> SortKey<C> {
-    pub fn columns(&self) -> Vec<Sort<C>> {
-        match self {
-            Self::Columns1(column_0) => vec![*column_0],
-            Self::Columns2(column_0, column_1) => vec![*column_0, *column_1],
-            Self::Columns3(column_0, column_1, column_2) => vec![*column_0, *column_1, *column_2],
-            Self::Columns4(column_0, column_1, column_2, column_3) => {
-                vec![*column_0, *column_1, *column_2, *column_3]
-            }
-            Self::Columns5(column_0, column_1, column_2, column_3, column_4) => {
-                vec![*column_0, *column_1, *column_2, *column_3, *column_4]
-            }
-        }
-    }
-}
-
-impl<C: Copy + SortColumn> From<SortKey<C>> for Vec<SortingColumn> {
-    fn from(value: SortKey<C>) -> Self {
-        value
-            .columns()
-            .iter()
-            .map(|sort| sort.sorting_column())
-            .collect()
-    }
-}
-
 pub trait Schema: Sized {
     type SortColumn;
     type Writer<W: std::io::Write + Send>: SchemaWrite<Self, W>;
@@ -122,10 +41,10 @@ pub trait Schema: Sized {
     fn schema() -> SchemaDescPtr;
 
     fn sort_key(
-        columns: &[Sort<Self::SortColumn>],
-    ) -> Result<SortKey<Self::SortColumn>, error::SortKeyError>
+        columns: &[sort::Sort<Self::SortColumn>],
+    ) -> Result<sort::SortKey<Self::SortColumn>, error::SortKeyError>
     where
-        Self::SortColumn: SortColumn + Copy,
+        Self::SortColumn: sort::SortColumn + Copy,
     {
         if columns.len() > 5 {
             Err(error::SortKeyError::UnsupportedLength(columns.len()))
@@ -142,13 +61,13 @@ pub trait Schema: Sized {
                 Err(error::SortKeyError::NonSingletonByteArrayKey)
             } else {
                 match columns.len() {
-                    1 => Ok(SortKey::Columns1(columns[0])),
-                    2 => Ok(SortKey::Columns2(columns[0], columns[1])),
-                    3 => Ok(SortKey::Columns3(columns[0], columns[1], columns[2])),
-                    4 => Ok(SortKey::Columns4(
+                    1 => Ok(sort::SortKey::Columns1(columns[0])),
+                    2 => Ok(sort::SortKey::Columns2(columns[0], columns[1])),
+                    3 => Ok(sort::SortKey::Columns3(columns[0], columns[1], columns[2])),
+                    4 => Ok(sort::SortKey::Columns4(
                         columns[0], columns[1], columns[2], columns[3],
                     )),
-                    5 => Ok(SortKey::Columns5(
+                    5 => Ok(sort::SortKey::Columns5(
                         columns[0], columns[1], columns[2], columns[3], columns[4],
                     )),
                     other => Err(error::SortKeyError::UnsupportedLength(other)),
@@ -157,7 +76,7 @@ pub trait Schema: Sized {
         }
     }
 
-    fn sort_key_value(&self, sort_key: SortKey<Self::SortColumn>) -> Vec<u8>;
+    fn sort_key_value(&self, sort_key: sort::SortKey<Self::SortColumn>) -> Vec<u8>;
 
     fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> SchemaIter<Self> {
         match SerializedFileReader::new_with_options(reader, options) {
