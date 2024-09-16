@@ -1,9 +1,11 @@
 use parquet::format::SortingColumn;
 
+/// Characterizes a column type where each column has a unique (generally sequential) numeric index.
 pub trait SortColumn {
     fn index(&self) -> usize;
 }
 
+/// Represents an ordering based on the value of a column.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Sort<C> {
     pub column: C,
@@ -48,6 +50,7 @@ impl<C: Copy> Sort<C> {
     }
 }
 
+/// Represents an ordering based on the values of a sequence of columns.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum SortKey<C> {
     Columns1(Sort<C>),

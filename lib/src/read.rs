@@ -18,7 +18,7 @@ impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
             Self::Failed(error) => error.take().map(|error| Err(error)),
             Self::Streaming { rows, .. } => rows
                 .next()
-                .map(|row| row.map_err(Error::from).and_then(|row| row.try_into())),
+                .map(|row| row.map_err(Error::from).and_then(T::try_from)),
         }
     }
 }
