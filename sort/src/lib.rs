@@ -1,6 +1,9 @@
 use bincode::serde::Compat;
 use parquet::file::properties::WriterPropertiesBuilder;
-use parquetry::{Schema, SchemaWrite, SortColumn, SortKey};
+use parquetry::{
+    sort::{SortColumn, SortKey},
+    Schema, SchemaWrite,
+};
 use rocksdb::{BlockBasedOptions, IteratorMode, MergeOperands, Options, DB};
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::File;

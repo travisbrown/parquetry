@@ -9,7 +9,7 @@ mod two_list_levels;
 mod test {
     use super::simple::{columns, Simple};
     use parquet::file::properties::WriterProperties;
-    use parquetry::{Schema, Sort};
+    use parquetry::{sort::Sort, Schema};
     use std::cmp::{Ordering, Reverse};
 
     #[derive(Clone, Debug, Eq, PartialEq)]
