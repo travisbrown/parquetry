@@ -210,9 +210,11 @@ pub trait Schema: Sized {
                 for result in row_group_splitter.by_ref() {
                     match result {
                         Ok(SizeChecked::Valid(value)) => writer.write_item(&value).map_err(E::from),
-                        Ok(SizeChecked::Oversized(_)) => Err(E::from(Error::OversizedRowValue {
-                            row_group_index: Some(row_group_index),
-                        })),
+                        Ok(SizeChecked::Oversized { .. }) => {
+                            Err(E::from(Error::OversizedRowValue {
+                                row_group_index: Some(row_group_index),
+                            }))
+                        }
                         Err(error) => Err(error),
                     }?;
                 }
@@ -220,7 +222,7 @@ pub trait Schema: Sized {
                 for result in row_group_splitter.by_ref() {
                     match result {
                         Ok(size_checked) => {
-                            writer.write_item(size_checked.merge()).map_err(E::from)
+                            writer.write_item(size_checked.value()).map_err(E::from)
                         }
                         Err(error) => Err(error),
                     }?;
@@ -286,26 +288,27 @@ pub struct RowGrouper<T, S, F> {
     }
 }*/
 
+/// Represents a value to be written that may exceed a size limit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
-pub enum SizeChecked<T> {
+pub enum SizeChecked<T, S> {
     Valid(T),
-    Oversized(T),
+    Oversized { value: T, size: S, limit: S },
 }
 
-impl<T> SizeChecked<T> {
-    fn merge(&self) -> &T {
+impl<T, S> SizeChecked<T, S> {
+    fn value(&self) -> &T {
         match self {
             Self::Valid(value) => value,
-            Self::Oversized(value) => value,
+            Self::Oversized { value, .. } => value,
         }
     }
 }
 
-impl<T> From<SizeChecked<T>> for Result<T, T> {
-    fn from(value: SizeChecked<T>) -> Self {
+impl<T, S> From<SizeChecked<T, S>> for Result<T, T> {
+    fn from(value: SizeChecked<T, S>) -> Self {
         match value {
             SizeChecked::Valid(value) => Ok(value),
-            SizeChecked::Oversized(value) => Err(value),
+            SizeChecked::Oversized { value, .. } => Err(value),
         }
     }
 }
@@ -344,10 +347,10 @@ impl<
         F: Fn(&T) -> S,
     > Iterator for RowGroupSplitter<T, S, E, I, F>
 {
-    type Item = Result<SizeChecked<T>, E>;
+    type Item = Result<SizeChecked<T, S>, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut oversized = false;
+        let mut oversized = None;
 
         if self.underlying.peek().map_or(true, |item| {
             item.as_ref().map_or(true, |next_item| {
@@ -365,7 +368,7 @@ impl<
                     }
                     None => {
                         if next_size > self.max_size {
-                            oversized = true;
+                            oversized = Some(next_size);
                         }
                         self.current_size = Some(next_size);
 
@@ -376,8 +379,12 @@ impl<
         }) {
             self.underlying.next().map(|result| {
                 result.map(|item| {
-                    if oversized {
-                        SizeChecked::Oversized(item)
+                    if let Some(size) = oversized {
+                        SizeChecked::Oversized {
+                            value: item,
+                            size,
+                            limit: self.max_size,
+                        }
                     } else {
                         SizeChecked::Valid(item)
                     }
