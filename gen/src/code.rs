@@ -488,7 +488,7 @@ pub fn gen_writer_write_row_group_block(gen_schema: &GenSchema) -> Result<Block,
     Ok(block)
 }
 
-pub fn gen_fill_workspace_block(gen_schema: &GenSchema) -> Result<Block, Error> {
+pub fn gen_fill_workspace_block() -> Result<Block, Error> {
     let mut block = Block::new("");
     block.line("let mut written_count = 0;");
     block.line("for result in values {");

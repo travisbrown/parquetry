@@ -330,7 +330,7 @@ fn schema_to_scope(
         .arg("workspace", format!("&mut {}", code::WORKSPACE_STRUCT_NAME))
         .arg("values", "I")
         .ret("Result<usize, E>")
-        .push_block(code::gen_fill_workspace_block(schema)?);
+        .push_block(code::gen_fill_workspace_block()?);
 
     base_impl
         .new_fn("add_item_to_workspace")

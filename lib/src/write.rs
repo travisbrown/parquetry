@@ -1,6 +1,5 @@
 use crate::error::Error;
 use std::iter::Peekable;
-use std::marker::PhantomData;
 
 pub trait SchemaWrite<T, W: std::io::Write> {
     fn write_row_group<'a, E: From<Error>, I: Iterator<Item = Result<&'a T, E>>>(
@@ -15,22 +14,6 @@ pub trait SchemaWrite<T, W: std::io::Write> {
 
     fn finish(self) -> Result<parquet::format::FileMetaData, Error>;
 }
-
-pub struct RowGrouper<T, S, F> {
-    max_size: S,
-    get_size: F,
-    _item: PhantomData<T>,
-}
-
-/*impl<T, F: Fn(&T) -> usize> RowGrouper<T, usize, F> {
-    pub fn by_count(count: usize) -> Self {
-        Self {
-            max_size: count,
-            get_size: |_| 1,
-            _item: PhantomData,
-        }
-    }
-}*/
 
 /// Represents a value to be written that may exceed a size limit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
