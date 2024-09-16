@@ -245,7 +245,10 @@ fn schema_to_scope(
 
     let writer_impl = scope
         .new_impl(&format!("{}Writer<W>", schema.type_name))
-        .impl_trait(format!("parquetry::SchemaWrite<{}, W>", schema.type_name))
+        .impl_trait(format!(
+            "parquetry::write::SchemaWrite<{}, W>",
+            schema.type_name
+        ))
         .generic("W: std::io::Write + Send");
 
     writer_impl

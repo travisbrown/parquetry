@@ -2,7 +2,8 @@ use bincode::serde::Compat;
 use parquet::file::properties::WriterPropertiesBuilder;
 use parquetry::{
     sort::{SortColumn, SortKey},
-    Schema, SchemaWrite,
+    write::SchemaWrite,
+    Schema,
 };
 use rocksdb::{BlockBasedOptions, IteratorMode, MergeOperands, Options, DB};
 use serde::{de::DeserializeOwned, Serialize};

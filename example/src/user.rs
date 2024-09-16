@@ -251,7 +251,7 @@ pub struct UserWriter<W: std::io::Write> {
     writer: parquet::file::writer::SerializedFileWriter<W>,
     workspace: ParquetryWorkspace,
 }
-impl<W: std::io::Write + Send> parquetry::SchemaWrite<User, W> for UserWriter<W> {
+impl<W: std::io::Write + Send> parquetry::write::SchemaWrite<User, W> for UserWriter<W> {
     fn write_row_group<
         'a,
         E: From<parquetry::error::Error>,
