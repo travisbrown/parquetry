@@ -8,11 +8,12 @@ use parquet::{
         serialized_reader::{ReadOptions, SerializedFileReader},
     },
     format::SortingColumn,
-    record::{reader::RowIter, Row},
+    record::reader::RowIter,
     schema::types::{ColumnPath, SchemaDescPtr},
 };
 
 pub mod error;
+pub mod read;
 pub mod sort;
 
 use crate::error::Error;
@@ -78,13 +79,13 @@ pub trait Schema: Sized {
 
     fn sort_key_value(&self, sort_key: sort::SortKey<Self::SortColumn>) -> Vec<u8>;
 
-    fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> SchemaIter<Self> {
+    fn read<R: ChunkReader + 'static>(reader: R, options: ReadOptions) -> read::SchemaIter<Self> {
         match SerializedFileReader::new_with_options(reader, options) {
-            Ok(file_reader) => SchemaIter::Streaming {
+            Ok(file_reader) => read::SchemaIter::Streaming {
                 rows: RowIter::from_file_into(Box::new(file_reader)),
                 _item: PhantomData,
             },
-            Err(error) => SchemaIter::Failed(Some(Error::from(error))),
+            Err(error) => read::SchemaIter::Failed(Some(Error::from(error))),
         }
     }
 
@@ -153,27 +154,6 @@ pub trait Schema: Sized {
         }
 
         writer.finish().map_err(E::from)
-    }
-}
-
-pub enum SchemaIter<T> {
-    Failed(Option<Error>),
-    Streaming {
-        rows: RowIter<'static>,
-        _item: PhantomData<T>,
-    },
-}
-
-impl<T: TryFrom<Row, Error = Error>> Iterator for SchemaIter<T> {
-    type Item = Result<T, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Failed(error) => error.take().map(|error| Err(error)),
-            Self::Streaming { rows, .. } => rows
-                .next()
-                .map(|row| row.map_err(Error::from).and_then(|row| row.try_into())),
-        }
     }
 }
 
