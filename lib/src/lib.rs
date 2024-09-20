@@ -133,9 +133,7 @@ pub trait Schema: Sized {
                             writer.write_item(&value).map_err(E::from)
                         }
                         Ok(write::SizeChecked::Oversized { .. }) => {
-                            Err(E::from(Error::OversizedRowValue {
-                                row_group_index: Some(row_group_index),
-                            }))
+                            Err(E::from(Error::OversizedRowValue { row_group_index }))
                         }
                         Err(error) => Err(error),
                     }?;

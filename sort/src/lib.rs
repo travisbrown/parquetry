@@ -1,8 +1,7 @@
 use bincode::serde::Compat;
-use parquet::file::properties::WriterPropertiesBuilder;
 use parquetry::{
     sort::{SortColumn, SortKey},
-    write::SchemaWrite,
+    write::{SchemaWrite, SizeChecked, SizeCounter},
     Schema,
 };
 use rocksdb::{BlockBasedOptions, IteratorMode, MergeOperands, Options, DB};
@@ -63,12 +62,18 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
         Ok(())
     }
 
-    pub fn write<P: AsRef<Path>>(
+    pub fn write<
+        W: std::io::Write + Send,
+        S: Copy + std::ops::Add<Output = S> + PartialOrd,
+        F: Fn(&A) -> S,
+    >(
         &self,
-        output: P,
-        properties: WriterPropertiesBuilder,
-        max_row_group_bytes: usize,
-    ) -> Result<Vec<usize>, Error>
+        writer: W,
+        properties: parquet::file::properties::WriterPropertiesBuilder,
+        max_size: S,
+        get_size: F,
+        fail_on_oversized: bool,
+    ) -> Result<parquet::format::FileMetaData, Error>
     where
         A::SortColumn: Copy + SortColumn,
     {
@@ -76,58 +81,81 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
             .set_sorting_columns(Some(self.sort_key.into()))
             .build();
 
-        let file = File::create(output)?;
-        let mut writer = A::writer(file, properties)?;
-
-        let mut current_bytes = 0;
-        let mut group: Vec<A> = Vec::with_capacity(256);
-        let mut group_counts = Vec::with_capacity(1);
+        let mut writer = A::writer(writer, properties)?;
+        let mut size_counter = SizeCounter::new(max_size, get_size);
+        let mut row_group_index = 0;
 
         for result in self.db.iterator(IteratorMode::Start) {
-            let bytes = result?.1;
+            let (_, value_bytes) = result?;
             let mut current = 0;
 
-            while current + 4 < bytes.len() {
+            while current + 4 < value_bytes.len() {
                 let len = u32::from_be_bytes(
-                    bytes[current..current + 4]
+                    value_bytes[current..current + 4]
                         .try_into()
-                        .map_err(|_| Error::InvalidValue(bytes.to_vec()))?,
+                        .map_err(|_| Error::InvalidValue(value_bytes.to_vec()))?,
                 ) as usize;
 
                 current += 4;
 
-                let decoded = bincode::decode_from_slice::<Compat<A>, _>(
-                    &bytes[current..current + len],
+                let (bincode::serde::Compat(item), _) = bincode::decode_from_slice::<Compat<A>, _>(
+                    &value_bytes[current..current + len],
                     bincode::config::standard(),
-                )?
-                .0;
+                )?;
 
                 current += len;
 
-                if current_bytes + len > max_row_group_bytes {
-                    if group.is_empty() {
-                        return Err(Error::InvalidRowGroupSize(max_row_group_bytes));
+                loop {
+                    if size_counter.add(&item) {
+                        match size_counter.checked(item) {
+                            SizeChecked::Valid(value) => writer.write_item(&value),
+                            SizeChecked::Oversized { value, .. } => {
+                                if fail_on_oversized {
+                                    Err(parquetry::error::Error::OversizedRowValue {
+                                        row_group_index,
+                                    })
+                                } else {
+                                    writer.write_item(&value)
+                                }
+                            }
+                        }?;
+
+                        break;
+                    } else {
+                        writer.finish_row_group()?;
+                        size_counter.reset();
+
+                        row_group_index += 1;
                     }
-
-                    group_counts.push(group.len());
-                    writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
-                    group.clear();
-                    current_bytes = 0;
                 }
-
-                current_bytes += len;
-                group.push(decoded.0);
             }
         }
 
-        if !group.is_empty() {
-            group_counts.push(group.len());
-            writer.write_row_group::<Error, _>(&mut group.iter().map(Ok))?;
+        if !size_counter.is_empty() {
+            writer.finish_row_group()?;
         }
 
-        writer.finish()?;
+        Ok(writer.finish()?)
+    }
 
-        Ok(group_counts)
+    pub fn write_file<
+        P: AsRef<Path>,
+        S: Copy + std::ops::Add<Output = S> + PartialOrd,
+        F: Fn(&A) -> S,
+    >(
+        &self,
+        output: P,
+        properties: parquet::file::properties::WriterPropertiesBuilder,
+        max_size: S,
+        get_size: F,
+        fail_on_oversized: bool,
+    ) -> Result<parquet::format::FileMetaData, Error>
+    where
+        A::SortColumn: Copy + SortColumn,
+    {
+        let file = File::create(output)?;
+
+        self.write(file, properties, max_size, get_size, fail_on_oversized)
     }
 }
 

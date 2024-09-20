@@ -98,7 +98,7 @@ mod test {
                 sort_db.insert(value).unwrap();
             }
 
-            sort_db.write(&test_file_path, WriterProperties::builder(), 1028 * 1028).unwrap();
+            sort_db.write_file(&test_file_path, WriterProperties::builder(), 1028 * 1028, |_| 1, false).unwrap();
 
             let read_file = std::fs::File::open(test_file_path).unwrap();
             let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();

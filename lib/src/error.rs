@@ -7,7 +7,7 @@ pub enum Error {
     #[error("Field error")]
     InvalidField(String),
     #[error("Oversized row value error")]
-    OversizedRowValue { row_group_index: Option<usize> },
+    OversizedRowValue { row_group_index: usize },
 }
 
 #[derive(thiserror::Error, Debug)]
