@@ -14,7 +14,7 @@ once_cell = { workspace = true }
 parquet = { workspace = true }
 parquetry = { path = "../lib/" }
 serde = { version = "1", features = ["derive"] }
-thiserror = "1"
+thiserror = "2"
 
 [build-dependencies]
 parquetry-gen = { path = "../gen/" }
