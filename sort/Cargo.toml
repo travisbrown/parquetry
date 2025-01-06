@@ -13,7 +13,7 @@ readme = { workspace = true }
 bincode = { workspace = true }
 chrono = { workspace = true }
 parquet = { workspace = true }
-parquetry = { version = "0.12.0", path = "../lib/" }
+parquetry = { version = "0.13.0", path = "../lib/" }
 serde = "1"
 rocksdb = "0.23"
 thiserror = { workspace = true }
