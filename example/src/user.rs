@@ -30,7 +30,7 @@ const SCHEMA_SOURCE: &str = "message user {
         }
     }
 }";
-pub static SCHEMA: once_cell::sync::Lazy<parquet::schema::types::SchemaDescPtr> = once_cell::sync::Lazy::new(||
+pub static SCHEMA: std::sync::LazyLock<parquet::schema::types::SchemaDescPtr> = std::sync::LazyLock::new(||
 std::sync::Arc::new(
     parquet::schema::types::SchemaDescriptor::new(
         std::sync::Arc::new(
