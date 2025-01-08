@@ -108,7 +108,7 @@ you will also need a dependency on [`serde`][serde] with the `derive` feature en
 
 If the `tests` flag is enabled in configuration (also the default),
 you will need to add [`bincode`][bincode] (a recent `2.0.0-rc.x` with the `serde` feature enabled),
-[`tempdir`][tempdir], and [`quickcheck`][quickcheck] to your `dev-dependencies`.
+[`tempfile`][tempfile], and [`quickcheck`][quickcheck] to your `dev-dependencies`.
 
 ## Usage
 
@@ -228,4 +228,4 @@ This software is published under the [Anti-Capitalist Software License][acsl] (v
 [quickcheck]: https://docs.rs/quickcheck/latest/quickcheck/
 [rust-parquet]: https://docs.rs/parquet/latest/parquet/
 [serde]: https://serde.rs/
-[tempdir]: https://docs.rs/tempdir/latest/tempdir/
+[tempfile]: https://docs.rs/tempfile/latest/tempfile/

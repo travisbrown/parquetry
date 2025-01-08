@@ -87,8 +87,8 @@ mod test {
 
     quickcheck::quickcheck! {
         fn sort_db_by_key_simple(values: Vec<Simple>) -> bool {
-            let test_db_dir = tempdir::TempDir::new("Simple-sort-db").unwrap();
-            let test_parquet_dir = tempdir::TempDir::new("Simple-sort-data").unwrap();
+            let test_db_dir = tempfile::Builder::new().prefix("Simple-sort-db").tempdir().unwrap();
+            let test_parquet_dir = tempfile::Builder::new().prefix("Simple-sort-data").tempdir().unwrap();
             let test_file_path = test_parquet_dir.path().join("sort-data.parquet");
 
             let sort_key = Simple::sort_key(&[Sort::new(columns::SortColumn::Mno), Sort::new(columns::SortColumn::Abc)]).unwrap();

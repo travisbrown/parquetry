@@ -1429,7 +1429,7 @@ mod test {
         }
     }
     fn round_trip_write_impl(groups: Vec<Vec<super::User>>) -> bool {
-        let test_dir = tempdir::TempDir::new("User-data").unwrap();
+        let test_dir = tempfile::Builder::new().prefix("User-data").tempdir().unwrap();
         let test_file_path = test_dir.path().join("write-data.parquet");
         let test_file = std::fs::File::create(&test_file_path).unwrap();
         <super::User as parquetry::Schema>::write_row_groups(

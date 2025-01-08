@@ -21,4 +21,4 @@ parquetry-gen = { path = "../gen/" }
 [dev-dependencies]
 bincode = { workspace = true }
 quickcheck = "1"
-tempdir = "0.3"
+tempfile = "3"

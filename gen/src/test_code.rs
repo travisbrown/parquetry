@@ -173,7 +173,7 @@ fn gen_round_trip_serde_bincode(type_name: &str) -> Vec<String> {
 fn gen_round_trip_write(type_name: &str) -> Vec<String> {
     vec![
         format!("fn round_trip_write_impl(groups: Vec<Vec<super::{}>>) -> bool {{", type_name),
-        format!("let test_dir = tempdir::TempDir::new(\"{}-data\").unwrap();", type_name),
+        format!("let test_dir = tempfile::Builder::new().prefix(\"{}-data\").tempdir().unwrap();", type_name),
         "let test_file_path = test_dir.path().join(\"write-data.parquet\");".to_string(),
         "let test_file = std::fs::File::create(&test_file_path).unwrap();".to_string(),
         format!("<super::{} as parquetry::Schema>::write_row_groups(test_file, Default::default(), groups.clone()).unwrap();", type_name),
