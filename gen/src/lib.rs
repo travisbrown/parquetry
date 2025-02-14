@@ -171,7 +171,7 @@ fn schema_to_scope(
 ) -> Result<Scope, Error> {
     let mut scope = Scope::new();
 
-    scope.raw(&format!(
+    scope.raw(format!(
         "const SCHEMA_SOURCE: &str = \"{}\";",
         schema_source
     ));
