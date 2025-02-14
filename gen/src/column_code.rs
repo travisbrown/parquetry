@@ -79,7 +79,7 @@ impl ColumnInfoTree {
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                let def = format!("pub const {}: parquetry::ColumnInfo = parquetry::ColumnInfo {{ index: {}, path: &[{}] }};", name.to_case(Case::ScreamingSnake), gen_column.index, path_parts);
+                let def = format!("pub const {}: parquetry::ColumnInfo = parquetry::ColumnInfo {{ index: {}, path: &[{}] }};", name.to_case(Case::Constant), gen_column.index, path_parts);
 
                 module.scope().raw(def);
             }
