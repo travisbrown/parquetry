@@ -155,7 +155,7 @@ impl<
     type Item = Result<SizeChecked<T, S>, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.underlying.peek().map_or(true, |item| {
+        if self.underlying.peek().is_none_or(|item| {
             item.as_ref()
                 .map_or(true, |next_item| self.size_counter.add(next_item))
         }) {
