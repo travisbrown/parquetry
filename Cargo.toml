@@ -1,13 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "cli",
-    "gen",
-    "lib",
-    "example",
-    "sort",
-    "test"
-]
+members = ["cli", "gen", "lib", "example", "sort", "test"]
 
 [workspace.package]
 authors = ["Travis Brown <travisrobertbrown@gmail.com>"]
