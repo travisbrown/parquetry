@@ -11,7 +11,7 @@ readme = { workspace = true }
 
 [dependencies]
 codegen = "0.2"
-convert_case = "0.7"
+convert_case = "0.8"
 parquet = { workspace = true }
 prettyplease = "0.2"
 syn = "2"
