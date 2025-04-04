@@ -12,6 +12,7 @@ const SCHEMA_SOURCE: &str = "message user {
 
             optional group user_profile_info {
                 required int64 created_at (timestamp(millis, true));
+                optional int32 created_at_date (date);
                 required byte_array location (string);
                 required byte_array description (string);
                 optional byte_array url (string);
@@ -60,6 +61,7 @@ pub struct UserNameInfo {
 pub struct UserProfileInfo {
     #[serde(with = "chrono::serde::ts_milliseconds")]
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at_date: Option<chrono::NaiveDate>,
     pub location: String,
     pub description: String,
     pub url: Option<String>,
@@ -78,6 +80,7 @@ pub mod columns {
         ScreenName,
         Name,
         CreatedAt,
+        CreatedAtDate,
         Location,
         Description,
         Url,
@@ -95,13 +98,14 @@ pub mod columns {
                 Self::ScreenName => 3,
                 Self::Name => 4,
                 Self::CreatedAt => 5,
-                Self::Location => 6,
-                Self::Description => 7,
-                Self::Url => 8,
-                Self::FollowersCount => 9,
-                Self::FriendsCount => 10,
-                Self::FavouritesCount => 11,
-                Self::StatusesCount => 12,
+                Self::CreatedAtDate => 6,
+                Self::Location => 7,
+                Self::Description => 8,
+                Self::Url => 9,
+                Self::FollowersCount => 10,
+                Self::FriendsCount => 11,
+                Self::FavouritesCount => 12,
+                Self::StatusesCount => 13,
             }
         }
     }
@@ -137,8 +141,17 @@ pub mod columns {
                         "created_at",
                     ],
                 };
-                pub const LOCATION: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                pub const CREATED_AT_DATE: parquetry::ColumnInfo = parquetry::ColumnInfo {
                     index: 6,
+                    path: &[
+                        "user_info",
+                        "user_name_info",
+                        "user_profile_info",
+                        "created_at_date",
+                    ],
+                };
+                pub const LOCATION: parquetry::ColumnInfo = parquetry::ColumnInfo {
+                    index: 7,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -147,7 +160,7 @@ pub mod columns {
                     ],
                 };
                 pub const DESCRIPTION: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 7,
+                    index: 8,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -156,11 +169,11 @@ pub mod columns {
                     ],
                 };
                 pub const URL: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 8,
+                    index: 9,
                     path: &["user_info", "user_name_info", "user_profile_info", "url"],
                 };
                 pub const FOLLOWERS_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 9,
+                    index: 10,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -169,7 +182,7 @@ pub mod columns {
                     ],
                 };
                 pub const FRIENDS_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 10,
+                    index: 11,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -178,7 +191,7 @@ pub mod columns {
                     ],
                 };
                 pub const FAVOURITES_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 11,
+                    index: 12,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -187,7 +200,7 @@ pub mod columns {
                     ],
                 };
                 pub const STATUSES_COUNT: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 12,
+                    index: 13,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -196,7 +209,7 @@ pub mod columns {
                     ],
                 };
                 pub const WITHHELD_IN_COUNTRIES: parquetry::ColumnInfo = parquetry::ColumnInfo {
-                    index: 13,
+                    index: 14,
                     path: &[
                         "user_info",
                         "user_name_info",
@@ -304,7 +317,7 @@ impl TryFrom<parquet::record::Row> for User {
                         chrono::TimeZone::timestamp_millis_opt(&chrono::Utc, *value)
                             .single()
                             .ok_or_else(|| parquetry::error::Error::InvalidField(
-                                "value".to_string(),
+                                "ts".to_string(),
                             ))?,
                     )
                 }
@@ -393,7 +406,7 @@ impl TryFrom<parquet::record::Row> for User {
                                                 chrono::TimeZone::timestamp_millis_opt(&chrono::Utc, *value)
                                                     .single()
                                                     .ok_or_else(|| parquetry::error::Error::InvalidField(
-                                                        "value".to_string(),
+                                                        "created_at".to_string(),
                                                     ))?,
                                             )
                                         }
@@ -401,6 +414,37 @@ impl TryFrom<parquet::record::Row> for User {
                                             Err(
                                                 parquetry::error::Error::InvalidField(
                                                     "created_at".to_string(),
+                                                ),
+                                            )
+                                        }
+                                    }?;
+                                    let created_at_date = match fields
+                                        .next()
+                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                            "created_at_date".to_string(),
+                                        ))?
+                                        .1
+                                    {
+                                        parquet::record::Field::Null => Ok(None),
+                                        parquet::record::Field::Date(value) => {
+                                            Ok(
+                                                Some(
+                                                    chrono::TimeDelta::try_days(*value as i64)
+                                                        .and_then(|delta| {
+                                                            chrono::NaiveDate::from_ymd_opt(1970, 1, 1)
+                                                                .unwrap()
+                                                                .checked_add_signed(delta)
+                                                        })
+                                                        .ok_or_else(|| parquetry::error::Error::InvalidField(
+                                                            "created_at_date".to_string(),
+                                                        ))?,
+                                                ),
+                                            )
+                                        }
+                                        _ => {
+                                            Err(
+                                                parquetry::error::Error::InvalidField(
+                                                    "created_at_date".to_string(),
                                                 ),
                                             )
                                         }
@@ -534,7 +578,7 @@ impl TryFrom<parquet::record::Row> for User {
                                                     _ => {
                                                         Err(
                                                             parquetry::error::Error::InvalidField(
-                                                                "Vec<String>".to_string(),
+                                                                "withheld_in_countries".to_string(),
                                                             ),
                                                         )
                                                     }
@@ -554,6 +598,7 @@ impl TryFrom<parquet::record::Row> for User {
                                     Ok(
                                         Some(UserProfileInfo {
                                             created_at,
+                                            created_at_date,
                                             location,
                                             description,
                                             url,
@@ -679,6 +724,31 @@ impl User {
                     Some(value) => {
                         bytes.push(if column.nulls_first { 1 } else { 0 });
                         for b in value.timestamp_micros().to_be_bytes() {
+                            bytes.push(if column.descending { !b } else { b });
+                        }
+                    }
+                    None => {
+                        bytes.push(if column.nulls_first { 0 } else { 1 });
+                    }
+                }
+            }
+            columns::SortColumn::CreatedAtDate => {
+                let value = self
+                    .user_info
+                    .as_ref()
+                    .and_then(|value| value.user_name_info.as_ref())
+                    .and_then(|value| value.user_profile_info.as_ref())
+                    .and_then(|value| value.created_at_date.as_ref());
+                match value {
+                    Some(value) => {
+                        bytes.push(if column.nulls_first { 1 } else { 0 });
+                        for b in (value
+                            .signed_duration_since(
+                                chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap(),
+                            )
+                            .num_days() as i32)
+                            .to_be_bytes()
+                        {
                             bytes.push(if column.descending { !b } else { b });
                         }
                     }
@@ -900,10 +970,10 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "location".to_string(),
+                    "created_at_date".to_string(),
                 ))?;
             column_writer
-                .typed::<parquet::data_type::ByteArrayType>()
+                .typed::<parquet::data_type::Int32Type>()
                 .write_batch(
                     &workspace.values_0006,
                     Some(&workspace.def_levels_0006),
@@ -913,7 +983,7 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "description".to_string(),
+                    "location".to_string(),
                 ))?;
             column_writer
                 .typed::<parquet::data_type::ByteArrayType>()
@@ -926,7 +996,7 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "url".to_string(),
+                    "description".to_string(),
                 ))?;
             column_writer
                 .typed::<parquet::data_type::ByteArrayType>()
@@ -939,10 +1009,10 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "followers_count".to_string(),
+                    "url".to_string(),
                 ))?;
             column_writer
-                .typed::<parquet::data_type::Int32Type>()
+                .typed::<parquet::data_type::ByteArrayType>()
                 .write_batch(
                     &workspace.values_0009,
                     Some(&workspace.def_levels_0009),
@@ -952,7 +1022,7 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "friends_count".to_string(),
+                    "followers_count".to_string(),
                 ))?;
             column_writer
                 .typed::<parquet::data_type::Int32Type>()
@@ -965,7 +1035,7 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "favourites_count".to_string(),
+                    "friends_count".to_string(),
                 ))?;
             column_writer
                 .typed::<parquet::data_type::Int32Type>()
@@ -978,7 +1048,7 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
-                    "statuses_count".to_string(),
+                    "favourites_count".to_string(),
                 ))?;
             column_writer
                 .typed::<parquet::data_type::Int32Type>()
@@ -991,14 +1061,27 @@ impl User {
             let mut column_writer = row_group_writer
                 .next_column()?
                 .ok_or_else(|| parquetry::error::Error::InvalidField(
+                    "statuses_count".to_string(),
+                ))?;
+            column_writer
+                .typed::<parquet::data_type::Int32Type>()
+                .write_batch(
+                    &workspace.values_0013,
+                    Some(&workspace.def_levels_0013),
+                    None,
+                )?;
+            column_writer.close()?;
+            let mut column_writer = row_group_writer
+                .next_column()?
+                .ok_or_else(|| parquetry::error::Error::InvalidField(
                     "element".to_string(),
                 ))?;
             column_writer
                 .typed::<parquet::data_type::ByteArrayType>()
                 .write_batch(
-                    &workspace.values_0013,
-                    Some(&workspace.def_levels_0013),
-                    Some(&workspace.rep_levels_0013),
+                    &workspace.values_0014,
+                    Some(&workspace.def_levels_0014),
+                    Some(&workspace.rep_levels_0014),
                 )?;
             column_writer.close()?;
             workspace.clear();
@@ -1048,6 +1131,7 @@ impl User {
                                 Some(
                                     UserProfileInfo {
                                         created_at,
+                                        created_at_date,
                                         location,
                                         description,
                                         url,
@@ -1060,51 +1144,68 @@ impl User {
                                 ) => {
                                     workspace.values_0005.push(created_at.timestamp_millis());
                                     workspace.def_levels_0005.push(3);
-                                    workspace.values_0006.push(location.as_str().into());
-                                    workspace.def_levels_0006.push(3);
-                                    workspace.values_0007.push(description.as_str().into());
-                                    workspace.def_levels_0007.push(3);
-                                    match url {
-                                        Some(url) => {
-                                            workspace.values_0008.push(url.as_str().into());
-                                            workspace.def_levels_0008.push(4);
+                                    match created_at_date {
+                                        Some(created_at_date) => {
+                                            workspace
+                                                .values_0006
+                                                .push(
+                                                    created_at_date
+                                                        .signed_duration_since(
+                                                            chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap(),
+                                                        )
+                                                        .num_days() as i32,
+                                                );
+                                            workspace.def_levels_0006.push(4);
                                         }
                                         None => {
-                                            workspace.def_levels_0008.push(3);
+                                            workspace.def_levels_0006.push(3);
                                         }
                                     }
-                                    workspace.values_0009.push(*followers_count);
-                                    workspace.def_levels_0009.push(3);
-                                    workspace.values_0010.push(*friends_count);
+                                    workspace.values_0007.push(location.as_str().into());
+                                    workspace.def_levels_0007.push(3);
+                                    workspace.values_0008.push(description.as_str().into());
+                                    workspace.def_levels_0008.push(3);
+                                    match url {
+                                        Some(url) => {
+                                            workspace.values_0009.push(url.as_str().into());
+                                            workspace.def_levels_0009.push(4);
+                                        }
+                                        None => {
+                                            workspace.def_levels_0009.push(3);
+                                        }
+                                    }
+                                    workspace.values_0010.push(*followers_count);
                                     workspace.def_levels_0010.push(3);
-                                    workspace.values_0011.push(*favourites_count);
+                                    workspace.values_0011.push(*friends_count);
                                     workspace.def_levels_0011.push(3);
-                                    workspace.values_0012.push(*statuses_count);
+                                    workspace.values_0012.push(*favourites_count);
                                     workspace.def_levels_0012.push(3);
+                                    workspace.values_0013.push(*statuses_count);
+                                    workspace.def_levels_0013.push(3);
                                     match withheld_in_countries {
                                         Some(withheld_in_countries) => {
                                             if withheld_in_countries.is_empty() {
-                                                workspace.def_levels_0013.push(4);
-                                                workspace.rep_levels_0013.push(0);
+                                                workspace.def_levels_0014.push(4);
+                                                workspace.rep_levels_0014.push(0);
                                             } else {
                                                 let mut first = true;
                                                 for element in withheld_in_countries {
                                                     if first {
-                                                        workspace.values_0013.push(element.as_str().into());
-                                                        workspace.def_levels_0013.push(5);
-                                                        workspace.rep_levels_0013.push(0);
+                                                        workspace.values_0014.push(element.as_str().into());
+                                                        workspace.def_levels_0014.push(5);
+                                                        workspace.rep_levels_0014.push(0);
                                                         first = false;
                                                     } else {
-                                                        workspace.values_0013.push(element.as_str().into());
-                                                        workspace.def_levels_0013.push(5);
-                                                        workspace.rep_levels_0013.push(1);
+                                                        workspace.values_0014.push(element.as_str().into());
+                                                        workspace.def_levels_0014.push(5);
+                                                        workspace.rep_levels_0014.push(1);
                                                     }
                                                 }
                                             }
                                         }
                                         None => {
-                                            workspace.def_levels_0013.push(3);
-                                            workspace.rep_levels_0013.push(0);
+                                            workspace.def_levels_0014.push(3);
+                                            workspace.rep_levels_0014.push(0);
                                         }
                                     }
                                 }
@@ -1118,7 +1219,8 @@ impl User {
                                     workspace.def_levels_0011.push(2);
                                     workspace.def_levels_0012.push(2);
                                     workspace.def_levels_0013.push(2);
-                                    workspace.rep_levels_0013.push(0);
+                                    workspace.def_levels_0014.push(2);
+                                    workspace.rep_levels_0014.push(0);
                                 }
                             }
                         }
@@ -1133,7 +1235,8 @@ impl User {
                             workspace.def_levels_0011.push(1);
                             workspace.def_levels_0012.push(1);
                             workspace.def_levels_0013.push(1);
-                            workspace.rep_levels_0013.push(0);
+                            workspace.def_levels_0014.push(1);
+                            workspace.rep_levels_0014.push(0);
                         }
                     }
                 }
@@ -1149,7 +1252,8 @@ impl User {
                     workspace.def_levels_0011.push(0);
                     workspace.def_levels_0012.push(0);
                     workspace.def_levels_0013.push(0);
-                    workspace.rep_levels_0013.push(0);
+                    workspace.def_levels_0014.push(0);
+                    workspace.rep_levels_0014.push(0);
                 }
             }
             Ok(())
@@ -1212,6 +1316,7 @@ impl UserNameInfo {
 impl UserProfileInfo {
     pub fn new(
         created_at: chrono::DateTime<chrono::Utc>,
+        created_at_date: Option<chrono::NaiveDate>,
         location: String,
         description: String,
         url: Option<String>,
@@ -1265,6 +1370,7 @@ impl UserProfileInfo {
         }
         Ok(Self {
             created_at,
+            created_at_date,
             location,
             description,
             url,
@@ -1288,13 +1394,13 @@ struct ParquetryWorkspace {
     def_levels_0004: Vec<i16>,
     values_0005: Vec<i64>,
     def_levels_0005: Vec<i16>,
-    values_0006: Vec<parquet::data_type::ByteArray>,
+    values_0006: Vec<i32>,
     def_levels_0006: Vec<i16>,
     values_0007: Vec<parquet::data_type::ByteArray>,
     def_levels_0007: Vec<i16>,
     values_0008: Vec<parquet::data_type::ByteArray>,
     def_levels_0008: Vec<i16>,
-    values_0009: Vec<i32>,
+    values_0009: Vec<parquet::data_type::ByteArray>,
     def_levels_0009: Vec<i16>,
     values_0010: Vec<i32>,
     def_levels_0010: Vec<i16>,
@@ -1302,9 +1408,11 @@ struct ParquetryWorkspace {
     def_levels_0011: Vec<i16>,
     values_0012: Vec<i32>,
     def_levels_0012: Vec<i16>,
-    values_0013: Vec<parquet::data_type::ByteArray>,
+    values_0013: Vec<i32>,
     def_levels_0013: Vec<i16>,
-    rep_levels_0013: Vec<i16>,
+    values_0014: Vec<parquet::data_type::ByteArray>,
+    def_levels_0014: Vec<i16>,
+    rep_levels_0014: Vec<i16>,
 }
 impl ParquetryWorkspace {
     fn clear(&mut self) {
@@ -1334,7 +1442,9 @@ impl ParquetryWorkspace {
         self.def_levels_0012.clear();
         self.values_0013.clear();
         self.def_levels_0013.clear();
-        self.rep_levels_0013.clear();
+        self.values_0014.clear();
+        self.def_levels_0014.clear();
+        self.rep_levels_0014.clear();
     }
 }
 #[cfg(test)]
@@ -1400,6 +1510,21 @@ mod test {
                             ),
                         3,
                     ),
+                    {
+                        let optional: Option<()> = <_>::arbitrary(g);
+                        optional
+                            .map(|_| {
+                                chrono::TimeDelta::try_days(gen_valid_date(g))
+                                    .and_then(|delta| {
+                                        chrono::NaiveDate::from_ymd_opt(1970, 1, 1)
+                                            .unwrap()
+                                            .checked_add_signed(delta)
+                                    })
+                                    .expect(
+                                        "Invalid quickcheck::Arbitrary instance for NaiveDate",
+                                    )
+                            })
+                    },
                     {
                         let mut value: String = quickcheck::Arbitrary::arbitrary(g);
                         value.retain(|char| char != '\0');
@@ -1467,6 +1592,13 @@ mod test {
     quickcheck::quickcheck! {
         fn round_trip_serde_bincode(values : Vec < super::User >) -> bool {
         round_trip_serde_bincode_impl(values) }
+    }
+    fn gen_valid_date(g: &mut quickcheck::Gen) -> i64 {
+        {
+            use quickcheck::Arbitrary;
+            let value: u16 = <_>::arbitrary(g);
+            value as i64
+        }
     }
     fn gen_valid_timestamp_milli(g: &mut quickcheck::Gen) -> i64 {
         {

@@ -338,6 +338,7 @@ pub fn gen_row_conversion_block(gen_schema: &GenSchema) -> Result<Block, Error> 
 
 fn gen_row_match_lines(
     gen_type: &GenType,
+    field_name: &str,
     base_type_name: &str,
     optional: bool,
 ) -> Result<Vec<String>, Error> {
@@ -354,14 +355,14 @@ fn gen_row_match_lines(
                     "parquet::record::Field::{}({}) => Ok(Some({})),",
                     mapping.row_field_variant(),
                     "value",
-                    mapping.row_field_conversion("value")
+                    mapping.row_field_conversion(field_name, "value")
                 ));
             } else {
                 lines.push(format!(
                     "parquet::record::Field::{}({}) => Ok({}),",
                     mapping.row_field_variant(),
                     "value",
-                    mapping.row_field_conversion("value")
+                    mapping.row_field_conversion(field_name, "value")
                 ));
             }
         }
@@ -388,13 +389,14 @@ fn gen_row_match_lines(
 
             lines.extend(gen_row_match_lines(
                 element_gen_type,
+                field_name,
                 element_struct_name,
                 *element_optional,
             )?);
 
             lines.push(format!(
                 "_ => Err(parquetry::error::Error::InvalidField(\"{}\".to_string()))",
-                base_type_name
+                field_name
             ));
 
             lines.push("}?;".to_string());
@@ -432,6 +434,7 @@ fn gen_row_conversion_assignments(
 
         lines.extend(gen_row_match_lines(
             &gen_field.gen_type,
+            &gen_field.name,
             &gen_field.base_type_name,
             gen_field.optional,
         )?);

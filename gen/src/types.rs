@@ -1,9 +1,10 @@
+use super::error::Error;
 use parquet::{
     basic::{LogicalType, Type as PhysicalType},
     format::TimeUnit,
 };
 
-use super::error::Error;
+const EPOCH_DATE: &str = "chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DateTimeUnit {
@@ -20,6 +21,7 @@ pub enum TypeMapping {
     U32,
     U64,
     String,
+    Date,
     DateTime(DateTimeUnit),
     F32,
     F64,
@@ -63,6 +65,7 @@ impl TypeMapping {
                 bit_width: 64,
                 is_signed: true,
             }) => Ok(Self::I64),
+            Some(LogicalType::Date) => Ok(Self::Date),
             Some(LogicalType::Timestamp {
                 is_adjusted_to_u_t_c: true,
                 unit: TimeUnit::MILLIS(_),
@@ -103,6 +106,7 @@ impl TypeMapping {
             Self::U32 => "u32".to_string(),
             Self::U64 => "u64".to_string(),
             Self::String => "String".to_string(),
+            Self::Date => "chrono::NaiveDate".to_string(),
             Self::DateTime(_) => "chrono::DateTime<chrono::Utc>".to_string(),
             Self::F32 => "f32".to_string(),
             Self::F64 => "f64".to_string(),
@@ -117,6 +121,10 @@ impl TypeMapping {
             Self::U32 => format!("*{} as i32", name),
             Self::U64 => format!("*{} as i64", name),
             Self::String => format!("{}.as_str().into()", name),
+            Self::Date => format!(
+                "{}.signed_duration_since({}).num_days() as i32",
+                name, EPOCH_DATE
+            ),
             Self::DateTime(DateTimeUnit::Millis) => format!("{}.timestamp_millis()", name),
             Self::DateTime(DateTimeUnit::Micros) => format!("{}.timestamp_micros()", name),
             Self::ByteArray => format!("{}.as_slice().into()", name),
@@ -132,6 +140,7 @@ impl TypeMapping {
             Self::U32 => "UInt",
             Self::U64 => "ULong",
             Self::String => "Str",
+            Self::Date => "Date",
             Self::DateTime(DateTimeUnit::Millis) => "TimestampMillis",
             Self::DateTime(DateTimeUnit::Micros) => "TimestampMicros",
             Self::F32 => "Float",
@@ -140,28 +149,37 @@ impl TypeMapping {
         }
     }
 
-    pub fn row_field_conversion(&self, name: &str) -> String {
+    pub fn row_field_conversion(&self, field_name: &str, binding_name: &str) -> String {
         match self {
             Self::Bool | Self::I32 | Self::I64 | Self::U32 | Self::U64 | Self::F32 | Self::F64 => {
-                format!("*{}", name)
+                format!("*{}", binding_name)
             }
-            Self::String => format!("{}.clone()", name),
+            Self::String => format!("{}.clone()", binding_name),
+            Self::Date => {
+                let delta = format!("chrono::TimeDelta::try_days(*{} as i64)", binding_name);
+                let error_handling = format!(".ok_or_else(|| {})?", Self::error(field_name));
+
+                format!(
+                    "{}.and_then(|delta| {}.checked_add_signed(delta)){}",
+                    delta, EPOCH_DATE, error_handling
+                )
+            }
             Self::DateTime(date_time_unit) => {
                 let method = match date_time_unit {
                     DateTimeUnit::Millis => "timestamp_millis_opt",
                     DateTimeUnit::Micros => "timestamp_micros",
                 };
-                let error_handling = format!(".ok_or_else(|| {})?", Self::error(name));
+                let error_handling = format!(".ok_or_else(|| {})?", Self::error(field_name));
                 format!(
                     "chrono::TimeZone::{}(&chrono::Utc, *{}).single(){}",
-                    method, name, error_handling
+                    method, binding_name, error_handling
                 )
             }
-            Self::ByteArray => format!("{}.data().to_vec()", name),
+            Self::ByteArray => format!("{}.data().to_vec()", binding_name),
             Self::FixedLengthByteArray(_) => format!(
                 "{}.data().try_into().map_err(|_| {})?",
-                name,
-                Self::error(name)
+                binding_name,
+                Self::error(field_name)
             ),
         }
     }
@@ -197,6 +215,14 @@ impl TypeMapping {
             }
             Self::I32 | Self::I64 | Self::U32 | Self::U64 | Self::F32 | Self::F64 => {
                 code.push_str("for b in value.to_be_bytes() {");
+                code.push_str("bytes.push(if column.descending { !b } else { b });");
+                code.push('}');
+            }
+            Self::Date => {
+                code.push_str(&format!(
+                    "for b in (value.signed_duration_since({}).num_days() as i32).to_be_bytes() {{",
+                    EPOCH_DATE
+                ));
                 code.push_str("bytes.push(if column.descending { !b } else { b });");
                 code.push('}');
             }

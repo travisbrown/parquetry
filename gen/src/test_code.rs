@@ -40,6 +40,12 @@ pub fn gen_test_code(test_module: &mut Module, schema: &GenSchema) -> Result<(),
     }
 
     test_module
+        .new_fn("gen_valid_date")
+        .arg("g", "&mut quickcheck::Gen")
+        .ret("i64")
+        .push_block(gen_valid_date_block());
+
+    test_module
         .new_fn("gen_valid_timestamp_milli")
         .arg("g", "&mut quickcheck::Gen")
         .ret("i64")
@@ -52,6 +58,14 @@ pub fn gen_test_code(test_module: &mut Module, schema: &GenSchema) -> Result<(),
         .push_block(gen_valid_timestamp_block("micro"));
 
     Ok(())
+}
+
+fn gen_valid_date_block() -> Block {
+    let mut block = Block::new("");
+    block.line("use quickcheck::Arbitrary;");
+    block.line("let value: u16 = <_>::arbitrary(g);");
+    block.line("value as i64");
+    block
 }
 
 fn gen_valid_timestamp_block(date_time_unit: &str) -> Block {
@@ -88,8 +102,29 @@ fn gen_valid_string(optional: bool) -> String {
     }
 }
 
-const INVALID_ARBITRARY_INSTANCE_MESSAGE: &str =
+const INVALID_ARBITRARY_DATE_INSTANCE_MESSAGE: &str =
+    "Invalid quickcheck::Arbitrary instance for NaiveDate";
+
+const INVALID_ARBITRARY_DATE_TIME_INSTANCE_MESSAGE: &str =
     "Invalid quickcheck::Arbitrary instance for DateTime<Utc>";
+
+fn gen_valid_date(optional: bool) -> String {
+    let epoch_date = "chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()";
+
+    let value = format!(
+        "chrono::TimeDelta::try_days(gen_valid_date(g)).and_then(|delta| {}.checked_add_signed(delta)).expect(\"{}\")",
+        epoch_date, INVALID_ARBITRARY_DATE_INSTANCE_MESSAGE
+    );
+
+    if optional {
+        format!(
+            "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {}) }}",
+            value
+        )
+    } else {
+        value
+    }
+}
 
 fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
     let method_name = if date_time_unit == "milli" {
@@ -104,7 +139,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
         "chrono::SubsecRound::trunc_subsecs(chrono::TimeZone::{}(&chrono::Utc, gen_valid_timestamp_{}(g)).single().expect(\"{}\"), {})",
         method_name,
         date_time_unit,
-        INVALID_ARBITRARY_INSTANCE_MESSAGE,
+        INVALID_ARBITRARY_DATE_TIME_INSTANCE_MESSAGE,
         digits
     );
 
@@ -121,6 +156,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
 fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
     match gen_type {
         GenType::Column(GenColumn { mapping, .. }) => match mapping {
+            TypeMapping::Date => gen_valid_date(optional),
             TypeMapping::DateTime(date_time_unit) => {
                 let date_time_unit = match date_time_unit {
                     DateTimeUnit::Millis => "milli",

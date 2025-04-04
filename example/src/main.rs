@@ -56,6 +56,7 @@ fn main() -> Result<(), Error> {
                             name: "Foo McBar".to_string(),
                             user_profile_info: Some(UserProfileInfo {
                                 created_at: Utc::now(),
+                                created_at_date: None,
                                 location: "Wherever".to_string(),
                                 description: "Whatever".to_string(),
                                 url: Some("https://foo.bar/".to_string()),
@@ -78,6 +79,7 @@ fn main() -> Result<(), Error> {
                             name: "Foo McBar".to_string(),
                             user_profile_info: Some(UserProfileInfo {
                                 created_at: Utc::now(),
+                                created_at_date: Some(Utc::now().date_naive()),
                                 location: "Wherever".to_string(),
                                 description: "Whatever".to_string(),
                                 url: Some("https://foo.bar/".to_string()),
