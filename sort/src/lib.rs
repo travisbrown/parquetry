@@ -61,7 +61,11 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
         A::SortColumn: Copy,
     {
         let key = value.sort_key_value(self.sort_key);
-        let bytes = bincode::encode_to_vec(Compat(value), bincode::config::standard())?;
+        let value_bytes = bincode::encode_to_vec(Compat(value), bincode::config::standard())?;
+
+        let mut bytes = Vec::with_capacity(value_bytes.len() + 4);
+        bytes.extend((value_bytes.len() as u32).to_be_bytes());
+        bytes.extend(value_bytes);
 
         self.db.merge(key, bytes)?;
 
@@ -173,12 +177,10 @@ fn concatenation_merge(
     let mut result: Vec<u8> = Vec::with_capacity(operands.len());
 
     if let Some(value) = existing_value {
-        result.extend((value.len() as u32).to_be_bytes());
         result.extend(value);
     };
 
     for operand in operands {
-        result.extend((operand.len() as u32).to_be_bytes());
         result.extend(operand);
     }
 
