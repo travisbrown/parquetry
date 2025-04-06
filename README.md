@@ -107,7 +107,7 @@ If the `serde_support` flag is enabled in configuration (which it is by default)
 you will also need a dependency on [`serde`][serde] with the `derive` feature enabled.
 
 If the `tests` flag is enabled in configuration (also the default),
-you will need to add [`bincode`][bincode] (a recent `2.0.0-rc.x` with the `serde` feature enabled),
+you will need to add [`bincode`][bincode] (with the `serde` feature enabled),
 [`tempfile`][tempfile], and [`quickcheck`][quickcheck] to your `dev-dependencies`.
 
 ## Usage
