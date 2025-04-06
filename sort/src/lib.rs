@@ -4,7 +4,7 @@ use parquetry::{
     write::{SchemaWrite, SizeChecked, SizeCounter},
     Schema,
 };
-use rocksdb::{BlockBasedOptions, IteratorMode, MergeOperands, Options, DB};
+use rocksdb::{IteratorMode, MergeOperands, Options, DB};
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::File;
 use std::path::Path;
@@ -40,10 +40,16 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
     pub fn open<P: AsRef<Path>>(path: P, sort_key: SortKey<A::SortColumn>) -> Result<Self, Error> {
         let mut options = Options::default();
         options.create_if_missing(true);
-        options.set_merge_operator_associative("concatenation", concatenation_merge);
 
-        let mut block_options = BlockBasedOptions::default();
-        block_options.set_ribbon_filter(10.0);
+        Self::open_opt(path, sort_key, options)
+    }
+
+    pub fn open_opt<P: AsRef<Path>>(
+        path: P,
+        sort_key: SortKey<A::SortColumn>,
+        mut options: Options,
+    ) -> Result<Self, Error> {
+        options.set_merge_operator_associative("concatenation", concatenation_merge);
 
         let db = Arc::new(DB::open(&options, path)?);
 

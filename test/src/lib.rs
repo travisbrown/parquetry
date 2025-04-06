@@ -8,6 +8,7 @@ mod two_list_levels;
 #[cfg(test)]
 mod test {
     use super::simple::{columns, Simple};
+    use chrono::{DateTime, Utc};
     use parquet::file::properties::WriterProperties;
     use parquetry::{sort::Sort, Schema};
     use std::cmp::{Ordering, Reverse};
@@ -109,5 +110,100 @@ mod test {
 
             read_values == by_fields
         }
+    }
+
+    #[test]
+    fn sort_db_colliding_key_stability() -> Result<(), Box<dyn std::error::Error>> {
+        let test_db_dir = tempfile::Builder::new()
+            .prefix("Simple-stable-sort-db")
+            .tempdir()?;
+        let test_parquet_dir = tempfile::Builder::new()
+            .prefix("Simple-stable-sort-data")
+            .tempdir()?;
+        let test_file_path = test_parquet_dir.path().join("stable-sort-data.parquet");
+
+        let sort_key = Simple::sort_key(&[
+            Sort::new(columns::SortColumn::Abc),
+            Sort::new(columns::SortColumn::Def),
+        ])?;
+
+        let now = Utc::now();
+
+        let first = vec![
+            simple_instance(123, "foo", now)?,
+            simple_instance(123, "abc", now)?,
+        ];
+
+        // To guard against the bug, this has to be large enough to ensure that all the merges are not done at once.
+        let garbage = (0..123)
+            .chain(124..10000)
+            .map(|abc| simple_instance(abc, "other", now))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let last = vec![
+            simple_instance(123, "", now)?,
+            simple_instance(123, "foox", now)?,
+        ];
+
+        let values = first
+            .into_iter()
+            .chain(garbage.into_iter())
+            .chain(last.into_iter())
+            .collect::<Vec<_>>();
+
+        let mut expected = values.clone();
+
+        expected.sort_by_key(|simple| simple.abc);
+
+        let mut options = rocksdb::Options::default();
+        options.create_if_missing(true);
+        options.set_write_buffer_size(512);
+
+        let sort_db =
+            parquetry_sort::SortDb::<Simple>::open_opt(test_db_dir.path(), sort_key, options)?;
+
+        for value in &values {
+            sort_db.insert(value)?;
+        }
+
+        sort_db.write_file(
+            &test_file_path,
+            WriterProperties::builder(),
+            1028 * 1028,
+            |_| 1,
+            false,
+        )?;
+
+        let read_file = std::fs::File::open(test_file_path)?;
+        let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();
+        let read_values = Simple::read(read_file, read_options).collect::<Result<Vec<_>, _>>()?;
+
+        println!("{:?}", read_values);
+
+        assert_eq!(read_values, expected);
+
+        Ok(())
+    }
+
+    fn simple_instance(
+        abc: u64,
+        req_def: &str,
+        stu: DateTime<Utc>,
+    ) -> Result<Simple, parquetry::error::ValueError> {
+        Simple::new(
+            abc,
+            None,
+            req_def.to_string(),
+            vec![None],
+            None,
+            false,
+            None,
+            stu,
+            None,
+            0.0,
+            [0; 20],
+            None,
+            None,
+        )
     }
 }

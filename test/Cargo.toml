@@ -11,6 +11,7 @@ readme = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 parquet = { workspace = true }
 parquetry = { path = "../lib/" }
+rocksdb = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 
