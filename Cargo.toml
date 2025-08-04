@@ -14,6 +14,6 @@ readme = "README.md"
 [workspace.dependencies]
 bincode = { version = "2", features = ["serde"] }
 chrono = "0.4"
-parquet = "55"
+parquet = "56"
 rocksdb = "0.23"
 thiserror = "2"
