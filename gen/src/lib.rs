@@ -63,10 +63,8 @@ impl ParsedFileSchema {
         let raw_code = self.scope.to_string();
 
         if self.config.format {
-            let file = syn::parse_file(&format!(
-                "#![cfg_attr(rustfmt, rustfmt_skip)]\n{}",
-                raw_code
-            ))?;
+            let file =
+                syn::parse_file(&format!("#![cfg_attr(rustfmt, rustfmt_skip)]\n{raw_code}"))?;
             Ok(prettyplease::unparse(&file))
         } else {
             Ok(raw_code)
@@ -171,10 +169,7 @@ fn schema_to_scope(
 ) -> Result<Scope, Error> {
     let mut scope = Scope::new();
 
-    scope.raw(format!(
-        "const SCHEMA_SOURCE: &str = \"{}\";",
-        schema_source
-    ));
+    scope.raw(format!("const SCHEMA_SOURCE: &str = \"{schema_source}\";",));
     scope.raw(STATIC_SCHEMA_DEF);
 
     for GenStruct {

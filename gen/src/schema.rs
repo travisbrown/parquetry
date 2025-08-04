@@ -240,7 +240,7 @@ impl GenField {
                         GenType::Column { .. } => element_gen_field.type_name(),
                         GenType::Struct { .. } => {
                             if element_gen_field.optional {
-                                format!("Option<{}>", element_struct_name)
+                                format!("Option<{element_struct_name}>")
                             } else {
                                 element_struct_name.clone()
                             }
@@ -251,7 +251,7 @@ impl GenField {
                     Ok((
                         Self {
                             name,
-                            base_type_name: format!("Vec<{}>", element_type_name),
+                            base_type_name: format!("Vec<{element_type_name}>"),
                             attributes: None,
                             optional,
                             gen_type: GenType::List {

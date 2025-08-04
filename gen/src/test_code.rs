@@ -72,12 +72,10 @@ fn gen_valid_timestamp_block(date_time_unit: &str) -> Block {
     let mut block = Block::new("");
     block.line("use quickcheck::Arbitrary;");
     block.line(format!(
-        "let min = chrono::DateTime::<chrono::Utc>::MIN_UTC.timestamp_{}s();",
-        date_time_unit
+        "let min = chrono::DateTime::<chrono::Utc>::MIN_UTC.timestamp_{date_time_unit}s();"
     ));
     block.line(format!(
-        "let max = chrono::DateTime::<chrono::Utc>::MAX_UTC.timestamp_{}s();",
-        date_time_unit
+        "let max = chrono::DateTime::<chrono::Utc>::MAX_UTC.timestamp_{date_time_unit}s();"
     ));
     block.line("let value: i64 = <_>::arbitrary(g);");
     block.line("if value < min { value % min } else if value > max { value % max } else { value }");
@@ -93,10 +91,7 @@ fn gen_valid_string(optional: bool) -> String {
     value.push('}');
 
     if optional {
-        format!(
-            "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {}) }}",
-            value
-        )
+        format!("{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {value}) }}")
     } else {
         value
     }
@@ -112,15 +107,11 @@ fn gen_valid_date(optional: bool) -> String {
     let epoch_date = "chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()";
 
     let value = format!(
-        "chrono::TimeDelta::try_days(gen_valid_date(g)).and_then(|delta| {}.checked_add_signed(delta)).expect(\"{}\")",
-        epoch_date, INVALID_ARBITRARY_DATE_INSTANCE_MESSAGE
+        "chrono::TimeDelta::try_days(gen_valid_date(g)).and_then(|delta| {epoch_date}.checked_add_signed(delta)).expect(\"{INVALID_ARBITRARY_DATE_INSTANCE_MESSAGE}\")"
     );
 
     if optional {
-        format!(
-            "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {}) }}",
-            value
-        )
+        format!("{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {value}) }}")
     } else {
         value
     }
@@ -130,7 +121,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
     let method_name = if date_time_unit == "milli" {
         "timestamp_millis_opt".to_string()
     } else {
-        format!("timestamp_{}s", date_time_unit)
+        format!("timestamp_{date_time_unit}s")
     };
 
     let digits = if date_time_unit == "milli" { 3 } else { 6 };
@@ -141,10 +132,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
     );
 
     if optional {
-        format!(
-            "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {}) }}",
-            value
-        )
+        format!("{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| {value}) }}",)
     } else {
         value
     }
@@ -168,11 +156,10 @@ fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
                     .join(", ");
                 if optional {
                     format!(
-                        "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| [{}]) }}",
-                        values
+                        "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| [{values}]) }}"
                     )
                 } else {
-                    format!("[{}]", values)
+                    format!("[{values}]")
                 }
             }
             TypeMapping::F32 | TypeMapping::F64 => {
@@ -198,25 +185,18 @@ fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
 
 fn gen_round_trip_serde_bincode(type_name: &str) -> Vec<String> {
     vec![
-        format!(
-            "fn round_trip_serde_bincode_impl(values: Vec<super::{}>) -> bool {{",
-            type_name
-        ),
+        format!("fn round_trip_serde_bincode_impl(values: Vec<super::{type_name}>) -> bool {{"),
         format!("let wrapped = bincode::serde::Compat(&values);"),
         format!(
             "let encoded = bincode::encode_to_vec(&wrapped, bincode::config::standard()).unwrap();"
         ),
         format!(
-            "let decoded: (bincode::serde::Compat<Vec<super::{}>>, _) = bincode::decode_from_slice(&encoded.as_slice(), bincode::config::standard()).unwrap();",
-            type_name
+            "let decoded: (bincode::serde::Compat<Vec<super::{type_name}>>, _) = bincode::decode_from_slice(&encoded.as_slice(), bincode::config::standard()).unwrap();",
         ),
         "decoded.0.0 == values".to_string(),
         "}".to_string(),
         "quickcheck::quickcheck! {".to_string(),
-        format!(
-            "    fn round_trip_serde_bincode(values: Vec<super::{}>) -> bool {{",
-            type_name
-        ),
+        format!("    fn round_trip_serde_bincode(values: Vec<super::{type_name}>) -> bool {{",),
         "        round_trip_serde_bincode_impl(values)".to_string(),
         "    }".to_string(),
         "}".to_string(),

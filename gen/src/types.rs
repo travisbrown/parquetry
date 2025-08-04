@@ -111,24 +111,21 @@ impl TypeMapping {
             Self::F32 => "f32".to_string(),
             Self::F64 => "f64".to_string(),
             Self::ByteArray => "Vec<u8>".to_string(),
-            Self::FixedLengthByteArray(len) => format!("[u8; {}]", len),
+            Self::FixedLengthByteArray(len) => format!("[u8; {len}]"),
         }
     }
 
     pub fn physical_type_conversion(&self, name: &str) -> String {
         match self {
-            Self::Bool | Self::I32 | Self::I64 | Self::F32 | Self::F64 => format!("*{}", name),
-            Self::U32 => format!("*{} as i32", name),
-            Self::U64 => format!("*{} as i64", name),
-            Self::String => format!("{}.as_str().into()", name),
-            Self::Date => format!(
-                "{}.signed_duration_since({}).num_days() as i32",
-                name, EPOCH_DATE
-            ),
-            Self::DateTime(DateTimeUnit::Millis) => format!("{}.timestamp_millis()", name),
-            Self::DateTime(DateTimeUnit::Micros) => format!("{}.timestamp_micros()", name),
-            Self::ByteArray => format!("{}.as_slice().into()", name),
-            Self::FixedLengthByteArray(_) => format!("{}.to_vec().into()", name),
+            Self::Bool | Self::I32 | Self::I64 | Self::F32 | Self::F64 => format!("*{name}"),
+            Self::U32 => format!("*{name} as i32"),
+            Self::U64 => format!("*{name} as i64"),
+            Self::String => format!("{name}.as_str().into()"),
+            Self::Date => format!("{name}.signed_duration_since({EPOCH_DATE}).num_days() as i32"),
+            Self::DateTime(DateTimeUnit::Millis) => format!("{name}.timestamp_millis()"),
+            Self::DateTime(DateTimeUnit::Micros) => format!("{name}.timestamp_micros()"),
+            Self::ByteArray => format!("{name}.as_slice().into()"),
+            Self::FixedLengthByteArray(_) => format!("{name}.to_vec().into()"),
         }
     }
 
@@ -152,16 +149,15 @@ impl TypeMapping {
     pub fn row_field_conversion(&self, field_name: &str, binding_name: &str) -> String {
         match self {
             Self::Bool | Self::I32 | Self::I64 | Self::U32 | Self::U64 | Self::F32 | Self::F64 => {
-                format!("*{}", binding_name)
+                format!("*{binding_name}")
             }
-            Self::String => format!("{}.clone()", binding_name),
+            Self::String => format!("{binding_name}.clone()"),
             Self::Date => {
-                let delta = format!("chrono::TimeDelta::try_days(*{} as i64)", binding_name);
+                let delta = format!("chrono::TimeDelta::try_days(*{binding_name} as i64)");
                 let error_handling = format!(".ok_or_else(|| {})?", Self::error(field_name));
 
                 format!(
-                    "{}.and_then(|delta| {}.checked_add_signed(delta)){}",
-                    delta, EPOCH_DATE, error_handling
+                    "{delta}.and_then(|delta| {EPOCH_DATE}.checked_add_signed(delta)){error_handling}",
                 )
             }
             Self::DateTime(date_time_unit) => {
@@ -171,14 +167,12 @@ impl TypeMapping {
                 };
                 let error_handling = format!(".ok_or_else(|| {})?", Self::error(field_name));
                 format!(
-                    "chrono::TimeZone::{}(&chrono::Utc, *{}).single(){}",
-                    method, binding_name, error_handling
+                    "chrono::TimeZone::{method}(&chrono::Utc, *{binding_name}).single(){error_handling}",
                 )
             }
-            Self::ByteArray => format!("{}.data().to_vec()", binding_name),
+            Self::ByteArray => format!("{binding_name}.data().to_vec()"),
             Self::FixedLengthByteArray(_) => format!(
-                "{}.data().try_into().map_err(|_| {})?",
-                binding_name,
+                "{binding_name}.data().try_into().map_err(|_| {})?",
                 Self::error(field_name)
             ),
         }
@@ -220,8 +214,7 @@ impl TypeMapping {
             }
             Self::Date => {
                 code.push_str(&format!(
-                    "for b in (value.signed_duration_since({}).num_days() as i32).to_be_bytes() {{",
-                    EPOCH_DATE
+                    "for b in (value.signed_duration_since({EPOCH_DATE}).num_days() as i32).to_be_bytes() {{",
                 ));
                 code.push_str("bytes.push(if column.descending { !b } else { b });");
                 code.push('}');
@@ -253,9 +246,6 @@ impl TypeMapping {
     }
 
     fn error(name: &str) -> String {
-        format!(
-            "parquetry::error::Error::InvalidField(\"{}\".to_string())",
-            name
-        )
+        format!("parquetry::error::Error::InvalidField(\"{name}\".to_string())")
     }
 }

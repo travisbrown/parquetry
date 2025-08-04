@@ -55,7 +55,7 @@ pub fn add_column_info_modules(scope: &mut Scope, gen_columns: &[GenColumn]) {
         sort_column_index.line("match self {");
 
         for (name, index) in sort_column_names {
-            sort_column_index.line(format!("Self::{} => {},", name, index));
+            sort_column_index.line(format!("Self::{name} => {index},"));
         }
 
         sort_column_index.line("}");
@@ -75,15 +75,14 @@ impl ColumnInfoTree {
                     .path()
                     .parts()
                     .iter()
-                    .map(|part| format!("\"{}\"", part))
+                    .map(|part| format!("\"{part}\""))
                     .collect::<Vec<_>>()
                     .join(", ");
 
                 let def = format!(
-                    "pub const {}: parquetry::ColumnInfo = parquetry::ColumnInfo {{ index: {}, path: &[{}] }};",
+                    "pub const {}: parquetry::ColumnInfo = parquetry::ColumnInfo {{ index: {}, path: &[{path_parts}] }};",
                     name.to_case(Case::Constant),
                     gen_column.index,
-                    path_parts
                 );
 
                 module.scope().raw(def);

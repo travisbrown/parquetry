@@ -17,7 +17,7 @@ fn main() -> Result<(), Error> {
         Command::Read { input } => {
             for value in User::read(File::open(input)?, ReadOptionsBuilder::default().build()) {
                 let value = value?;
-                println!("{:?}", value);
+                println!("{value:?}");
             }
         }
         Command::Dump { output } => {

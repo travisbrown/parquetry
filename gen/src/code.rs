@@ -27,12 +27,12 @@ pub fn gen_constructor(gen_struct: &GenStruct, function: &mut Function) -> Resul
 
                     if field.optional {
                         function.line(format!(
-                            "let {} = {}.map(|value| chrono::SubsecRound::trunc_subsecs(value, {}));",
-                            field.name, field.name, digits));
+                            "let {} = {}.map(|value| chrono::SubsecRound::trunc_subsecs(value, {digits}));",
+                            field.name, field.name));
                     } else {
                         function.line(format!(
-                            "let {} = chrono::SubsecRound::trunc_subsecs({}, {});",
-                            field.name, field.name, digits
+                            "let {} = chrono::SubsecRound::trunc_subsecs({}, {digits});",
+                            field.name, field.name
                         ));
                     }
                 }
@@ -40,7 +40,7 @@ pub fn gen_constructor(gen_struct: &GenStruct, function: &mut Function) -> Resul
                     let mut column_path_code = String::new();
                     column_path_code.push_str("parquet::schema::types::ColumnPath::new(vec![");
                     for part in column.descriptor.path().parts() {
-                        column_path_code.push_str(&format!("\"{}\".to_string(), ", part));
+                        column_path_code.push_str(&format!("\"{part}\".to_string(), "));
                     }
                     column_path_code.push_str("])");
 
@@ -57,8 +57,7 @@ pub fn gen_constructor(gen_struct: &GenStruct, function: &mut Function) -> Resul
                     ));
                     function.line("if *byte == 0 {");
                     function.line(format!(
-                        "return Err(parquetry::error::ValueError::NullByteString {{ column_path: {}, index }});",
-                        column_path_code
+                        "return Err(parquetry::error::ValueError::NullByteString {{ column_path: {column_path_code}, index }});"
                     ));
 
                     if field.optional {
@@ -121,9 +120,8 @@ fn gen_option_match<A: AsRef<str>, B: ToString>(
     };
 
     format!(
-        "match {} {{ Some({}) => {{ {} }}, None => {{ {} }} }}",
+        "match {} {{ Some({binding}) => {{ {} }}, None => {{ {} }} }}",
         name.as_ref(),
-        binding,
         some_value.to_string(),
         none_value.to_string()
     )
@@ -200,10 +198,8 @@ fn gen_type_writer_code(
 
             if !optional {
                 let mut code = vec![format!(
-                    "let {} {{ {} }} = {};",
-                    base_type_name,
+                    "let {base_type_name} {{ {} }} = {name};",
                     field_names.join(", "),
-                    name
                 )];
 
                 for field in gen_fields {
@@ -284,11 +280,11 @@ fn gen_type_writer_code(
             )?);
             non_empty_code.push("}".to_string());
 
-            let mut code = vec![format!("if {}.is_empty() {{", name)];
+            let mut code = vec![format!("if {name}.is_empty() {{")];
             code.extend(empty_code);
             code.push("} else {".to_string());
             code.push("let mut first = true;".to_string());
-            code.push(format!("for element in {} {{", name));
+            code.push(format!("for element in {name} {{"));
             code.extend(non_empty_code);
             code.push("}".to_string());
             code.push("}".to_string());
@@ -395,8 +391,7 @@ fn gen_row_match_lines(
             )?);
 
             lines.push(format!(
-                "_ => Err(parquetry::error::Error::InvalidField(\"{}\".to_string()))",
-                field_name
+                "_ => Err(parquetry::error::Error::InvalidField(\"{field_name}\".to_string()))",
             ));
 
             lines.push("}?;".to_string());
@@ -447,8 +442,7 @@ fn gen_row_conversion_assignments(
     }
 
     let value_base = format!(
-        "{} {{ {} }}",
-        type_name,
+        "{type_name} {{ {} }}",
         gen_fields
             .iter()
             .map(|gen_field| gen_field.name.as_str())
@@ -457,9 +451,9 @@ fn gen_row_conversion_assignments(
     );
 
     if optional {
-        lines.push(format!("Ok(Some({}))", value_base));
+        lines.push(format!("Ok(Some({value_base}))"));
     } else {
-        lines.push(format!("Ok({})", value_base));
+        lines.push(format!("Ok({value_base})"));
     }
 
     Ok(lines)
@@ -575,18 +569,18 @@ pub fn add_workspace_struct(scope: &mut Scope, columns: &[ColumnDescPtr]) -> Res
                 physical_type_rust_type_name(column.physical_type())?
             ),
         );
-        clear_code.push(format!("self.{}.clear();", values_name));
+        clear_code.push(format!("self.{values_name}.clear();"));
 
         if column.max_def_level() > 0 {
             let def_levels_name = def_levels_var_name(index);
             workspace.new_field(&def_levels_name, "Vec<i16>");
-            clear_code.push(format!("self.{}.clear();", def_levels_name));
+            clear_code.push(format!("self.{def_levels_name}.clear();"));
         }
 
         if column.max_rep_level() > 0 {
             let rep_levels_name = rep_levels_var_name(index);
             workspace.new_field(&rep_levels_name, "Vec<i16>");
-            clear_code.push(format!("self.{}.clear();", rep_levels_name));
+            clear_code.push(format!("self.{rep_levels_name}.clear();"));
         }
     }
 
@@ -627,17 +621,17 @@ pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error
             if any_optional {
                 if *optional {
                     if last && gen_column.mapping.is_copy() {
-                        value_path.push_str(&format!(".and_then(|value| value.{})", part));
+                        value_path.push_str(&format!(".and_then(|value| value.{part})"));
                     } else {
-                        value_path.push_str(&format!(".and_then(|value| value.{}.as_ref())", part));
+                        value_path.push_str(&format!(".and_then(|value| value.{part}.as_ref())"));
                     }
                 } else if last && gen_column.mapping.is_copy() {
-                    value_path.push_str(&format!(".map(|value| value.{})", part));
+                    value_path.push_str(&format!(".map(|value| value.{part})"));
                 } else {
-                    value_path.push_str(&format!(".map(|value| &value.{})", part));
+                    value_path.push_str(&format!(".map(|value| &value.{part})"));
                 }
             } else {
-                value_path.push_str(&format!(".{}", part));
+                value_path.push_str(&format!(".{part}"));
 
                 if *optional {
                     if !last || !gen_column.mapping.is_copy() {
@@ -663,17 +657,13 @@ pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error
         }
         if !any_optional && gen_column.rust_path.len() == 1 && !gen_column.mapping.is_copy() {
             block.line(format!(
-                "columns::SortColumn::{} => {{ let value = &self{}; {} }},",
+                "columns::SortColumn::{} => {{ let value = &self{value_path}; {code} }},",
                 gen_column.variant_name(),
-                value_path,
-                code,
             ));
         } else {
             block.line(format!(
-                "columns::SortColumn::{} => {{ let value = self{}; {} }},",
+                "columns::SortColumn::{} => {{ let value = self{value_path}; {code} }},",
                 gen_column.variant_name(),
-                value_path,
-                code,
             ));
         }
     }
@@ -707,13 +697,13 @@ fn physical_type_rust_type_name(t: PhysicalType) -> Result<&'static str, Error> 
 }
 
 pub fn values_var_name(index: usize) -> String {
-    format!("values_{:04}", index)
+    format!("values_{index:04}")
 }
 
 pub fn def_levels_var_name(index: usize) -> String {
-    format!("def_levels_{:04}", index)
+    format!("def_levels_{index:04}")
 }
 
 pub fn rep_levels_var_name(index: usize) -> String {
-    format!("rep_levels_{:04}", index)
+    format!("rep_levels_{index:04}")
 }

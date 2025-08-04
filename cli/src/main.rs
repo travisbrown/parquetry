@@ -16,7 +16,7 @@ fn main() -> Result<(), Error> {
             for row in reader {
                 let row = row?;
                 for (name, field) in row.get_column_iter() {
-                    println!("{}: {:?}", name, field);
+                    println!("{name}: {field:?}");
                 }
             }
         }
