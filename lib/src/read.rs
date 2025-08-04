@@ -1,5 +1,5 @@
 use crate::error::Error;
-use parquet::record::{reader::RowIter, Row};
+use parquet::record::{Row, reader::RowIter};
 use std::marker::PhantomData;
 
 pub enum SchemaIter<T> {

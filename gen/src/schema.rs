@@ -8,7 +8,7 @@ use std::ops::Range;
 
 use crate::types::TypeMapping;
 
-use super::{error::Error, Config};
+use super::{Config, error::Error};
 
 #[derive(Clone, Debug)]
 pub struct GenSchema {

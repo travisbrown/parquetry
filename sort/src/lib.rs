@@ -1,11 +1,11 @@
 use bincode::serde::Compat;
 use parquetry::{
+    Schema,
     sort::{SortColumn, SortKey},
     write::{SchemaWrite, SizeChecked, SizeCounter},
-    Schema,
 };
-use rocksdb::{IteratorMode, MergeOperands, Options, DB};
-use serde::{de::DeserializeOwned, Serialize};
+use rocksdb::{DB, IteratorMode, MergeOperands, Options};
+use serde::{Serialize, de::DeserializeOwned};
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;

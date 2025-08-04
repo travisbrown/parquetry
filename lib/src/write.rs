@@ -145,12 +145,12 @@ impl<T, S, E: From<Error>, I: Iterator<Item = Result<T, E>>, F: Fn(&T) -> S>
 }
 
 impl<
-        T,
-        S: Copy + std::ops::Add<Output = S> + PartialOrd,
-        E,
-        I: Iterator<Item = Result<T, E>>,
-        F: Fn(&T) -> S,
-    > Iterator for RowGroupSplitter<T, S, E, I, F>
+    T,
+    S: Copy + std::ops::Add<Output = S> + PartialOrd,
+    E,
+    I: Iterator<Item = Result<T, E>>,
+    F: Fn(&T) -> S,
+> Iterator for RowGroupSplitter<T, S, E, I, F>
 {
     type Item = Result<SizeChecked<T, S>, E>;
 

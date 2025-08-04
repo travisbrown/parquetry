@@ -137,10 +137,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
 
     let value = format!(
         "chrono::SubsecRound::trunc_subsecs(chrono::TimeZone::{}(&chrono::Utc, gen_valid_timestamp_{}(g)).single().expect(\"{}\"), {})",
-        method_name,
-        date_time_unit,
-        INVALID_ARBITRARY_DATE_TIME_INSTANCE_MESSAGE,
-        digits
+        method_name, date_time_unit, INVALID_ARBITRARY_DATE_TIME_INSTANCE_MESSAGE, digits
     );
 
     if optional {
@@ -170,16 +167,25 @@ fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
                     .collect::<Vec<_>>()
                     .join(", ");
                 if optional {
-                    format!("{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| [{}]) }}",  values)
+                    format!(
+                        "{{ let optional: Option<()> = <_>::arbitrary(g);\noptional.map(|_| [{}]) }}",
+                        values
+                    )
                 } else {
                     format!("[{}]", values)
                 }
             }
             TypeMapping::F32 | TypeMapping::F64 => {
                 if optional {
-                    format!("match Option::<{}>::arbitrary(g) {{ Some(value) if value.is_nan() => Some(0.0), value => value }}", mapping.rust_type_name())
+                    format!(
+                        "match Option::<{}>::arbitrary(g) {{ Some(value) if value.is_nan() => Some(0.0), value => value }}",
+                        mapping.rust_type_name()
+                    )
                 } else {
-                    format!("match {}::arbitrary(g) {{ value if value.is_nan() => 0.0, value => value }}", mapping.rust_type_name())
+                    format!(
+                        "match {}::arbitrary(g) {{ value if value.is_nan() => 0.0, value => value }}",
+                        mapping.rust_type_name()
+                    )
                 }
             }
             TypeMapping::String => gen_valid_string(optional),
@@ -192,36 +198,63 @@ fn arbitrary_value(gen_type: &GenType, optional: bool) -> String {
 
 fn gen_round_trip_serde_bincode(type_name: &str) -> Vec<String> {
     vec![
-        format!("fn round_trip_serde_bincode_impl(values: Vec<super::{}>) -> bool {{", type_name),
+        format!(
+            "fn round_trip_serde_bincode_impl(values: Vec<super::{}>) -> bool {{",
+            type_name
+        ),
         format!("let wrapped = bincode::serde::Compat(&values);"),
-        format!("let encoded = bincode::encode_to_vec(&wrapped, bincode::config::standard()).unwrap();"),
-        format!("let decoded: (bincode::serde::Compat<Vec<super::{}>>, _) = bincode::decode_from_slice(&encoded.as_slice(), bincode::config::standard()).unwrap();", type_name),
+        format!(
+            "let encoded = bincode::encode_to_vec(&wrapped, bincode::config::standard()).unwrap();"
+        ),
+        format!(
+            "let decoded: (bincode::serde::Compat<Vec<super::{}>>, _) = bincode::decode_from_slice(&encoded.as_slice(), bincode::config::standard()).unwrap();",
+            type_name
+        ),
         "decoded.0.0 == values".to_string(),
         "}".to_string(),
         "quickcheck::quickcheck! {".to_string(),
-        format!("    fn round_trip_serde_bincode(values: Vec<super::{}>) -> bool {{", type_name),
+        format!(
+            "    fn round_trip_serde_bincode(values: Vec<super::{}>) -> bool {{",
+            type_name
+        ),
         "        round_trip_serde_bincode_impl(values)".to_string(),
         "    }".to_string(),
-        "}".to_string()
+        "}".to_string(),
     ]
 }
 
 fn gen_round_trip_write(type_name: &str) -> Vec<String> {
     vec![
-        format!("fn round_trip_write_impl(groups: Vec<Vec<super::{}>>) -> bool {{", type_name),
-        format!("let test_dir = tempfile::Builder::new().prefix(\"{}-data\").tempdir().unwrap();", type_name),
+        format!(
+            "fn round_trip_write_impl(groups: Vec<Vec<super::{}>>) -> bool {{",
+            type_name
+        ),
+        format!(
+            "let test_dir = tempfile::Builder::new().prefix(\"{}-data\").tempdir().unwrap();",
+            type_name
+        ),
         "let test_file_path = test_dir.path().join(\"write-data.parquet\");".to_string(),
         "let test_file = std::fs::File::create(&test_file_path).unwrap();".to_string(),
-        format!("<super::{} as parquetry::Schema>::write_row_groups(test_file, Default::default(), groups.clone()).unwrap();", type_name),
+        format!(
+            "<super::{} as parquetry::Schema>::write_row_groups(test_file, Default::default(), groups.clone()).unwrap();",
+            type_name
+        ),
         "let read_file = std::fs::File::open(test_file_path).unwrap();".to_string(),
-        "let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();".to_string(),
-        format!("let read_values = <super::{} as parquetry::Schema>::read(read_file, read_options).collect::<Result<Vec<_>, _>>().unwrap();", type_name),
+        "let read_options = parquet::file::serialized_reader::ReadOptionsBuilder::new().build();"
+            .to_string(),
+        format!(
+            "let read_values = <super::{} as parquetry::Schema>::read(read_file, read_options).collect::<Result<Vec<_>, _>>().unwrap();",
+            type_name
+        ),
         "read_values == groups.into_iter().flatten().collect::<Vec<_>>()".to_string(),
         "}".to_string(),
         "quickcheck::quickcheck! {".to_string(),
-        format!("    fn round_trip_write(groups: Vec<Vec<super::{}>>) -> bool {{", type_name),
+        format!(
+            "    fn round_trip_write(groups: Vec<Vec<super::{}>>) -> bool {{",
+            type_name
+        ),
         "        round_trip_write_impl(groups)".to_string(),
         "    }".to_string(),
-        "}".to_string()
+        "}".to_string(),
     ]
 }

@@ -7,10 +7,10 @@ mod two_list_levels;
 
 #[cfg(test)]
 mod test {
-    use super::simple::{columns, Simple};
+    use super::simple::{Simple, columns};
     use chrono::{DateTime, Utc};
     use parquet::file::properties::WriterProperties;
-    use parquetry::{sort::Sort, Schema};
+    use parquetry::{Schema, sort::Sort};
     use std::cmp::{Ordering, Reverse};
 
     #[derive(Clone, Debug, Eq, PartialEq)]
