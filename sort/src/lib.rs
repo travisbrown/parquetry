@@ -102,7 +102,7 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
             let (_, value_bytes) = result?;
             let mut current = 0;
 
-            while current + 4 < value_bytes.len() {
+            while current + 4 <= value_bytes.len() {
                 let len = u32::from_be_bytes(
                     value_bytes[current..current + 4]
                         .try_into()
@@ -110,6 +110,10 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
                 ) as usize;
 
                 current += 4;
+
+                if current + len > value_bytes.len() {
+                    return Err(Error::InvalidValue(value_bytes.to_vec()));
+                }
 
                 let (bincode::serde::Compat(item), _) = bincode::decode_from_slice::<Compat<A>, _>(
                     &value_bytes[current..current + len],
@@ -177,7 +181,9 @@ fn concatenation_merge(
     existing_value: Option<&[u8]>,
     operands: &MergeOperands,
 ) -> Option<Vec<u8>> {
-    let mut result: Vec<u8> = Vec::with_capacity(operands.len());
+    let capacity = existing_value.map_or(0, <[u8]>::len)
+        + operands.iter().map(<[u8]>::len).sum::<usize>();
+    let mut result: Vec<u8> = Vec::with_capacity(capacity);
 
     if let Some(value) = existing_value {
         result.extend(value);
