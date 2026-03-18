@@ -94,7 +94,7 @@ pub trait SchemaWrite<T, W: std::io::Write> {
     fn write_item(&mut self, value: &T) -> Result<(), Error>;
     fn finish_row_group(&mut self) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, Error>;
 
-    fn finish(self) -> Result<parquet::format::FileMetaData, Error>;
+    fn finish(self) -> Result<parquet::file::metadata::ParquetMetaData, Error>;
 }
 
 /// Represents a value to be written that may exceed a size limit.

@@ -83,7 +83,7 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
         max_size: S,
         get_size: F,
         fail_on_oversized: bool,
-    ) -> Result<parquet::format::FileMetaData, Error>
+    ) -> Result<parquet::file::metadata::ParquetMetaData, Error>
     where
         A::SortColumn: Copy + SortColumn,
     {
@@ -159,7 +159,7 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
         max_size: S,
         get_size: F,
         fail_on_oversized: bool,
-    ) -> Result<parquet::format::FileMetaData, Error>
+    ) -> Result<parquet::file::metadata::ParquetMetaData, Error>
     where
         A::SortColumn: Copy + SortColumn,
     {

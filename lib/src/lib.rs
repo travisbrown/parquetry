@@ -1,10 +1,10 @@
 use parquet::{
     basic::LogicalType,
     file::{
+        metadata::{ParquetMetaData, SortingColumn},
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
     },
-    format::SortingColumn,
     record::reader::RowIter,
     schema::types::{ColumnPath, SchemaDescPtr},
 };
@@ -30,7 +30,11 @@ impl ColumnInfo {
     }
 
     pub fn sorting(&self) -> SortingColumn {
-        SortingColumn::new(self.index as i32, false, false)
+        SortingColumn {
+            column_idx: self.index as i32,
+            descending: false,
+            nulls_first: false,
+        }
     }
 }
 
@@ -56,8 +60,10 @@ pub trait Schema: Sized {
             if columns.iter().any(|column| {
                 descriptors[column.column.index()].physical_type()
                     == parquet::basic::Type::BYTE_ARRAY
-                    && descriptors[column.column.index()].logical_type()
-                        != Some(LogicalType::String)
+                    && !matches!(
+                        descriptors[column.column.index()].logical_type_ref(),
+                        Some(LogicalType::String)
+                    )
             }) {
                 Err(error::SortKeyError::NonSingletonByteArrayKey)
             } else {
@@ -98,7 +104,7 @@ pub trait Schema: Sized {
         writer: W,
         properties: parquet::file::properties::WriterProperties,
         groups: I,
-    ) -> Result<parquet::format::FileMetaData, Error> {
+    ) -> Result<ParquetMetaData, Error> {
         let mut writer = Self::writer(writer, properties)?;
 
         for group in groups {
@@ -120,7 +126,7 @@ pub trait Schema: Sized {
         get_size: F,
         fail_on_oversized: bool,
         items: I,
-    ) -> Result<parquet::format::FileMetaData, E> {
+    ) -> Result<ParquetMetaData, E> {
         let mut writer = Self::writer(writer, properties)?;
         let mut row_group_splitter = write::RowGroupSplitter::new(items, max_size, get_size);
         let mut row_group_index = 0;

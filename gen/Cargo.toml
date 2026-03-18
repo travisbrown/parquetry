@@ -10,8 +10,8 @@ license-file = { workspace = true }
 readme = { workspace = true }
 
 [dependencies]
-codegen = "0.2"
-convert_case = "0.8"
+codegen = "0.3"
+convert_case = "0.11"
 parquet = { workspace = true }
 prettyplease = "0.2"
 syn = "2"

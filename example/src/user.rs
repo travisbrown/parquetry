@@ -290,7 +290,9 @@ impl<W: std::io::Write + Send> parquetry::write::SchemaWrite<User, W> for UserWr
     ) -> Result<parquet::file::metadata::RowGroupMetaDataPtr, parquetry::error::Error> {
         User::write_with_workspace(&mut self.writer, &mut self.workspace)
     }
-    fn finish(self) -> Result<parquet::format::FileMetaData, parquetry::error::Error> {
+    fn finish(
+        self,
+    ) -> Result<parquet::file::metadata::ParquetMetaData, parquetry::error::Error> {
         Ok(self.writer.close()?)
     }
 }

@@ -190,7 +190,7 @@ impl GenField {
                 } else {
                     let column = columns[current_column_index].clone();
                     let mapping = super::types::TypeMapping::from_types(
-                        column.logical_type(),
+                        column.logical_type_ref().cloned(),
                         *physical_type,
                         *type_length,
                     )?;
@@ -264,7 +264,7 @@ impl GenField {
                         },
                         new_current_column_index,
                     ))
-                } else if basic_info.logical_type() == Some(LogicalType::List)
+                } else if matches!(basic_info.logical_type_ref(), Some(LogicalType::List))
                     || (basic_info.has_repetition()
                         && basic_info.repetition() == Repetition::REPEATED)
                 {

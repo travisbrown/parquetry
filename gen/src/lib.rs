@@ -281,7 +281,7 @@ fn schema_to_scope(
     writer_impl
         .new_fn("finish")
         .arg_self()
-        .ret("Result<parquet::format::FileMetaData, parquetry::error::Error>")
+        .ret("Result<parquet::file::metadata::ParquetMetaData, parquetry::error::Error>")
         .line("Ok(self.writer.close()?)");
 
     let row_conversion_impl = scope

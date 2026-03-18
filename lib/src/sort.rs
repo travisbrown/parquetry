@@ -1,4 +1,4 @@
-use parquet::format::SortingColumn;
+use parquet::file::metadata::SortingColumn;
 
 /// Characterizes a column type where each column has a unique (generally sequential) numeric index.
 pub trait SortColumn {
@@ -42,11 +42,11 @@ impl<C: Copy> Sort<C> {
     where
         C: SortColumn,
     {
-        SortingColumn::new(
-            self.column.index() as i32,
-            self.descending,
-            self.nulls_first,
-        )
+        SortingColumn {
+            column_idx: self.column.index() as i32,
+            descending: self.descending,
+            nulls_first: self.nulls_first,
+        }
     }
 }
 

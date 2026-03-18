@@ -1,8 +1,5 @@
 use super::error::Error;
-use parquet::{
-    basic::{LogicalType, Type as PhysicalType},
-    format::TimeUnit,
-};
+use parquet::basic::{LogicalType, TimeUnit, Type as PhysicalType};
 
 const EPOCH_DATE: &str = "chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()";
 
@@ -68,11 +65,11 @@ impl TypeMapping {
             Some(LogicalType::Date) => Ok(Self::Date),
             Some(LogicalType::Timestamp {
                 is_adjusted_to_u_t_c: true,
-                unit: TimeUnit::MILLIS(_),
+                unit: TimeUnit::MILLIS,
             }) => Ok(Self::DateTime(DateTimeUnit::Millis)),
             Some(LogicalType::Timestamp {
                 is_adjusted_to_u_t_c: true,
-                unit: TimeUnit::MICROS(_),
+                unit: TimeUnit::MICROS,
             }) => Ok(Self::DateTime(DateTimeUnit::Micros)),
             Some(other) => Err(Error::UnsupportedLogicalType(other)),
         }
