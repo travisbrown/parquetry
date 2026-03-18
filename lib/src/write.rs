@@ -23,7 +23,7 @@ pub struct SizeCounter<T, S, F: Fn(&T) -> S> {
 }
 
 impl<T, S, F: Fn(&T) -> S> SizeCounter<T, S, F> {
-    pub fn new(max_size: S, get_size: F) -> Self {
+    pub const fn new(max_size: S, get_size: F) -> Self {
         Self {
             max_size,
             get_size,
@@ -33,7 +33,7 @@ impl<T, S, F: Fn(&T) -> S> SizeCounter<T, S, F> {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.current_size.is_none()
     }
 
@@ -44,7 +44,7 @@ impl<T, S, F: Fn(&T) -> S> SizeCounter<T, S, F> {
 }
 
 impl<T, S: Copy, F: Fn(&T) -> S> SizeCounter<T, S, F> {
-    pub fn checked(&mut self, item: T) -> SizeChecked<T, S> {
+    pub const fn checked(&mut self, item: T) -> SizeChecked<T, S> {
         if let Some(size) = self.oversized.take() {
             SizeChecked::Oversized {
                 value: item,
@@ -61,24 +61,21 @@ impl<T, S: Copy + std::ops::Add<Output = S> + PartialOrd, F: Fn(&T) -> S> SizeCo
     pub fn add(&mut self, item: &T) -> bool {
         let next_size = (self.get_size)(item);
 
-        match self.current_size {
-            Some(current_size) => {
-                let new_current_size = next_size + current_size;
-                if new_current_size <= self.max_size {
-                    self.current_size = Some(new_current_size);
-                    true
-                } else {
-                    false
-                }
-            }
-            None => {
-                if next_size > self.max_size {
-                    self.oversized = Some(next_size);
-                }
-                self.current_size = Some(next_size);
-
+        if let Some(current_size) = self.current_size {
+            let new_current_size = next_size + current_size;
+            if new_current_size <= self.max_size {
+                self.current_size = Some(new_current_size);
                 true
+            } else {
+                false
             }
+        } else {
+            if next_size > self.max_size {
+                self.oversized = Some(next_size);
+            }
+            self.current_size = Some(next_size);
+
+            true
         }
     }
 }
@@ -105,7 +102,7 @@ pub enum SizeChecked<T, S> {
 }
 
 impl<T, S> SizeChecked<T, S> {
-    pub fn value(&self) -> &T {
+    pub const fn value(&self) -> &T {
         match self {
             Self::Valid(value) => value,
             Self::Oversized { value, .. } => value,

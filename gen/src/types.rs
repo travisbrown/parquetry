@@ -126,7 +126,7 @@ impl TypeMapping {
         }
     }
 
-    pub fn row_field_variant(&self) -> &'static str {
+    pub const fn row_field_variant(&self) -> &'static str {
         match self {
             Self::Bool => "Bool",
             Self::I32 => "Int",
@@ -183,7 +183,7 @@ impl TypeMapping {
         }
     }
 
-    pub fn is_copy(&self) -> bool {
+    pub const fn is_copy(&self) -> bool {
         matches!(
             self,
             Self::Bool

@@ -1,3 +1,6 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, rust_2018_idioms)]
+#![allow(clippy::missing_errors_doc)]
+#![forbid(unsafe_code)]
 use bincode::serde::Compat;
 use parquetry::{
     Schema,
@@ -178,7 +181,7 @@ fn concatenation_merge(
 
     if let Some(value) = existing_value {
         result.extend(value);
-    };
+    }
 
     for operand in operands {
         result.extend(operand);

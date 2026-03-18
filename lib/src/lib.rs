@@ -1,3 +1,6 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, rust_2018_idioms)]
+#![allow(clippy::missing_errors_doc)]
+#![forbid(unsafe_code)]
 use parquet::{
     basic::LogicalType,
     file::{
@@ -25,11 +28,18 @@ pub struct ColumnInfo {
 }
 
 impl ColumnInfo {
+    #[must_use]
     pub fn path(&self) -> ColumnPath {
-        ColumnPath::new(self.path.iter().map(|part| part.to_string()).collect())
+        ColumnPath::new(
+            self.path
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        )
     }
 
-    pub fn sorting(&self) -> SortingColumn {
+    #[must_use]
+    pub const fn sorting(&self) -> SortingColumn {
         SortingColumn {
             column_idx: self.index as i32,
             descending: false,

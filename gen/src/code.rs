@@ -112,7 +112,7 @@ fn gen_option_match<A: AsRef<str>, B: ToString>(
             type_name.as_ref(),
             field_names
                 .iter()
-                .map(|value| value.as_ref())
+                .map(std::convert::AsRef::as_ref)
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -148,15 +148,7 @@ fn gen_type_writer_code(
 
             let mut code = vec![];
 
-            if !optional {
-                code.push(assignment);
-                if descriptor.max_def_level() > 0 {
-                    code.push(gen_push(
-                        format!("workspace.{}", def_levels_var_name(*index)),
-                        descriptor.max_def_level(),
-                    ))
-                };
-            } else {
+            if optional {
                 let some_code = [
                     assignment,
                     gen_push(
@@ -175,6 +167,14 @@ fn gen_type_writer_code(
                     some_code.join("\n"),
                     none_code,
                 ));
+            } else {
+                code.push(assignment);
+                if descriptor.max_def_level() > 0 {
+                    code.push(gen_push(
+                        format!("workspace.{}", def_levels_var_name(*index)),
+                        descriptor.max_def_level(),
+                    ));
+                }
             }
 
             if let Some(rep_level) = rep_level {
@@ -196,18 +196,7 @@ fn gen_type_writer_code(
                 .map(|gen_field| gen_field.name.as_str())
                 .collect::<Vec<_>>();
 
-            if !optional {
-                let mut code = vec![format!(
-                    "let {base_type_name} {{ {} }} = {name};",
-                    field_names.join(", "),
-                )];
-
-                for field in gen_fields {
-                    code.extend(gen_field_writer_code(field, rep_level)?);
-                }
-
-                code
-            } else {
+            if optional {
                 let mut some_code = vec![];
                 let mut none_code = vec![];
 
@@ -237,6 +226,17 @@ fn gen_type_writer_code(
                 );
 
                 vec![code]
+            } else {
+                let mut code = vec![format!(
+                    "let {base_type_name} {{ {} }} = {name};",
+                    field_names.join(", "),
+                )];
+
+                for field in gen_fields {
+                    code.extend(gen_field_writer_code(field, rep_level)?);
+                }
+
+                code
             }
         }
         GenType::List {
@@ -289,9 +289,7 @@ fn gen_type_writer_code(
             code.push("}".to_string());
             code.push("}".to_string());
 
-            if !optional {
-                code
-            } else {
+            if optional {
                 let mut none_code = vec![];
                 for index in gen_type.column_indices() {
                     none_code.push(gen_push(
@@ -313,6 +311,8 @@ fn gen_type_writer_code(
                     code.join("\n"),
                     none_code.join("\n"),
                 )]
+            } else {
+                code
             }
         }
     };
@@ -670,7 +670,7 @@ pub fn gen_write_sort_key_bytes_block(schema: &GenSchema) -> Result<Block, Error
     Ok(block)
 }
 
-fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
+const fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
     match t {
         PhysicalType::BOOLEAN => Ok("BoolType"),
         PhysicalType::INT32 => Ok("Int32Type"),
@@ -683,7 +683,7 @@ fn physical_type_name(t: PhysicalType) -> Result<&'static str, Error> {
     }
 }
 
-fn physical_type_rust_type_name(t: PhysicalType) -> Result<&'static str, Error> {
+const fn physical_type_rust_type_name(t: PhysicalType) -> Result<&'static str, Error> {
     match t {
         PhysicalType::BOOLEAN => Ok("bool"),
         PhysicalType::INT32 => Ok("i32"),

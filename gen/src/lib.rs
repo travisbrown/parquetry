@@ -1,3 +1,6 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, rust_2018_idioms)]
+#![allow(clippy::missing_errors_doc)]
+#![forbid(unsafe_code)]
 use codegen::Scope;
 use parquet::schema::{parser::parse_message_type, types::SchemaDescriptor};
 use std::path::PathBuf;
@@ -23,6 +26,7 @@ pub struct Config {
 }
 
 impl Config {
+    #[must_use]
     pub fn derives(&self) -> Vec<&'static str> {
         let mut derives = self.base_derives.clone();
 
@@ -71,7 +75,7 @@ impl ParsedFileSchema {
         }
     }
 
-    pub fn open<P: AsRef<Path>>(input: P, config: Config) -> Result<ParsedFileSchema, Error> {
+    pub fn open<P: AsRef<Path>>(input: P, config: Config) -> Result<Self, Error> {
         let input = input.as_ref();
         let schema_source = std::fs::read_to_string(input)?;
         let (schema, descriptor) = parse_schema(&schema_source, config.clone())?;
@@ -84,7 +88,7 @@ impl ParsedFileSchema {
             .ok_or_else(|| Error::InvalidPath(input.to_path_buf()))?
             .to_string();
 
-        Ok(ParsedFileSchema {
+        Ok(Self {
             name,
             schema,
             descriptor,
@@ -98,7 +102,7 @@ impl ParsedFileSchema {
         input: P,
         config: Config,
         suffix: Option<&str>,
-    ) -> Result<Vec<ParsedFileSchema>, Error> {
+    ) -> Result<Vec<Self>, Error> {
         let mut schemas = std::fs::read_dir(input)?
             .map(|result| result.map_err(Error::from).map(|entry| entry.path()))
             .filter_map(|result| {
@@ -231,7 +235,7 @@ fn schema_to_scope(
         .push_block(code::gen_writer_block()?);
 
     let writer_struct = scope
-        .new_struct(&format!("{}Writer", schema.type_name))
+        .new_struct(format!("{}Writer", schema.type_name))
         .vis("pub")
         .generic("W: std::io::Write");
 
@@ -239,7 +243,7 @@ fn schema_to_scope(
     writer_struct.new_field("workspace", code::WORKSPACE_STRUCT_NAME);
 
     let writer_impl = scope
-        .new_impl(&format!("{}Writer<W>", schema.type_name))
+        .new_impl(format!("{}Writer<W>", schema.type_name))
         .impl_trait(format!(
             "parquetry::write::SchemaWrite<{}, W>",
             schema.type_name

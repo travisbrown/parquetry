@@ -98,7 +98,7 @@ impl ColumnInfoTree {
 }
 
 impl ColumnInfoBranch {
-    fn get_branch(&mut self, target_name: &str) -> Option<&mut ColumnInfoBranch> {
+    fn get_branch(&mut self, target_name: &str) -> Option<&mut Self> {
         self.0.iter_mut().find_map(|(name, tree)| match tree {
             ColumnInfoTree::Branch(branch) if name == target_name => Some(branch),
             _ => None,
@@ -110,18 +110,15 @@ impl ColumnInfoBranch {
             self.0
                 .push((path[0].clone(), ColumnInfoTree::Leaf(gen_column.clone())));
         } else if let Some(next) = path.pop() {
-            let tree = match self.get_branch(&next) {
-                Some(existing) => existing,
-                None => {
-                    self.0.push((
-                        next.clone(),
-                        ColumnInfoTree::Branch(ColumnInfoBranch(vec![])),
-                    ));
-                    self.get_branch(&next).unwrap()
-                }
+            let tree = if let Some(existing) = self.get_branch(&next) {
+                existing
+            } else {
+                self.0
+                    .push((next.clone(), ColumnInfoTree::Branch(Self(vec![]))));
+                self.get_branch(&next).unwrap()
             };
 
-            tree.add(path, gen_column)
+            tree.add(path, gen_column);
         }
     }
 }

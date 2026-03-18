@@ -10,7 +10,7 @@ use super::error::Error;
 pub fn gen_test_code(test_module: &mut Module, schema: &GenSchema) -> Result<(), Error> {
     for gen_struct in schema.structs() {
         let arbitrary_fn = test_module
-            .new_impl(&format!("super::{}", gen_struct.type_name))
+            .new_impl(format!("super::{}", gen_struct.type_name))
             .impl_trait("quickcheck::Arbitrary")
             .new_fn("arbitrary")
             .arg("g", "&mut quickcheck::Gen")
@@ -127,8 +127,7 @@ fn gen_valid_date_time(date_time_unit: &str, optional: bool) -> String {
     let digits = if date_time_unit == "milli" { 3 } else { 6 };
 
     let value = format!(
-        "chrono::SubsecRound::trunc_subsecs(chrono::TimeZone::{}(&chrono::Utc, gen_valid_timestamp_{}(g)).single().expect(\"{}\"), {})",
-        method_name, date_time_unit, INVALID_ARBITRARY_DATE_TIME_INSTANCE_MESSAGE, digits
+        "chrono::SubsecRound::trunc_subsecs(chrono::TimeZone::{method_name}(&chrono::Utc, gen_valid_timestamp_{date_time_unit}(g)).single().expect(\"{INVALID_ARBITRARY_DATE_TIME_INSTANCE_MESSAGE}\"), {digits})"
     );
 
     if optional {

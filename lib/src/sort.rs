@@ -14,7 +14,7 @@ pub struct Sort<C> {
 }
 
 impl<C: Copy> Sort<C> {
-    pub fn new(column: C) -> Self {
+    pub const fn new(column: C) -> Self {
         Self {
             column,
             descending: false,
@@ -22,7 +22,7 @@ impl<C: Copy> Sort<C> {
         }
     }
 
-    pub fn descending(&self) -> Self {
+    pub const fn descending(&self) -> Self {
         Self {
             column: self.column,
             descending: true,
@@ -30,7 +30,7 @@ impl<C: Copy> Sort<C> {
         }
     }
 
-    pub fn nulls_first(&self) -> Self {
+    pub const fn nulls_first(&self) -> Self {
         Self {
             column: self.column,
             descending: self.descending,
@@ -78,10 +78,6 @@ impl<C: Copy> SortKey<C> {
 
 impl<C: Copy + SortColumn> From<SortKey<C>> for Vec<SortingColumn> {
     fn from(value: SortKey<C>) -> Self {
-        value
-            .columns()
-            .iter()
-            .map(|sort| sort.sorting_column())
-            .collect()
+        value.columns().iter().map(Sort::sorting_column).collect()
     }
 }
