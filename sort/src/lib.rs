@@ -138,12 +138,11 @@ impl<A: Schema + DeserializeOwned + Serialize> SortDb<A> {
                         }?;
 
                         break;
-                    } else {
-                        writer.finish_row_group()?;
-                        size_counter.reset();
-
-                        row_group_index += 1;
                     }
+                    writer.finish_row_group()?;
+                    size_counter.reset();
+
+                    row_group_index += 1;
                 }
             }
         }

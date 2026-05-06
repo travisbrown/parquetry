@@ -9,7 +9,7 @@ pub struct WriteConfig<T, S, F: Fn(&T) -> S> {
 }
 
 impl<T, S: Copy, F: Fn(&T) -> S + Copy> WriteConfig<T, S, F> {
-    pub fn size_counter(&self) -> SizeCounter<T, S, F> {
+    pub const fn size_counter(&self) -> SizeCounter<T, S, F> {
         SizeCounter::new(self.max_size, self.get_size)
     }
 }
