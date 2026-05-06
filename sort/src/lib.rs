@@ -181,8 +181,8 @@ fn concatenation_merge(
     existing_value: Option<&[u8]>,
     operands: &MergeOperands,
 ) -> Option<Vec<u8>> {
-    let capacity = existing_value.map_or(0, <[u8]>::len)
-        + operands.iter().map(<[u8]>::len).sum::<usize>();
+    let capacity =
+        existing_value.map_or(0, <[u8]>::len) + operands.iter().map(<[u8]>::len).sum::<usize>();
     let mut result: Vec<u8> = Vec::with_capacity(capacity);
 
     if let Some(value) = existing_value {
