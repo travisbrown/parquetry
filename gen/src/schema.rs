@@ -194,7 +194,7 @@ impl GenField {
                 } else {
                     let column = columns[current_column_index].clone();
                     let mapping = super::types::TypeMapping::from_types(
-                        column.logical_type_ref().cloned(),
+                        column.logical_type_ref(),
                         *physical_type,
                         *type_length,
                     )?;

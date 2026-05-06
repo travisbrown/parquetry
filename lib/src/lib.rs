@@ -3,8 +3,9 @@
 #![forbid(unsafe_code)]
 use parquet::{
     basic::LogicalType,
+    file::metadata::SortingColumn,
     file::{
-        metadata::{ParquetMetaData, SortingColumn},
+        metadata::ParquetMetaData,
         reader::ChunkReader,
         serialized_reader::{ReadOptions, SerializedFileReader},
     },

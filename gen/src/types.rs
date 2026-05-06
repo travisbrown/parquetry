@@ -28,7 +28,7 @@ pub enum TypeMapping {
 
 impl TypeMapping {
     pub fn from_types(
-        logical_type: Option<LogicalType>,
+        logical_type: Option<&LogicalType>,
         physical_type: PhysicalType,
         type_length: i32,
     ) -> Result<Self, Error> {
@@ -71,7 +71,7 @@ impl TypeMapping {
                 is_adjusted_to_u_t_c: true,
                 unit: TimeUnit::MICROS,
             }) => Ok(Self::DateTime(DateTimeUnit::Micros)),
-            Some(other) => Err(Error::UnsupportedLogicalType(other)),
+            Some(other) => Err(Error::UnsupportedLogicalType(other.clone())),
         }
     }
 
