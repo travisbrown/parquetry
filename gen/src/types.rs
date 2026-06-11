@@ -1,5 +1,5 @@
 use super::error::Error;
-use parquet::basic::{LogicalType, TimeUnit, Type as PhysicalType};
+use parquet::basic::{IntType, LogicalType, TimeUnit, TimestampType, Type as PhysicalType};
 
 const EPOCH_DATE: &str = "chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()";
 
@@ -46,31 +46,31 @@ impl TypeMapping {
                 PhysicalType::INT96 => Err(Error::UnsupportedPhysicalType(PhysicalType::INT96)),
             },
             Some(LogicalType::String) => Ok(Self::String),
-            Some(LogicalType::Integer {
+            Some(LogicalType::Integer(IntType {
                 bit_width: 32,
                 is_signed: false,
-            }) => Ok(Self::U32),
-            Some(LogicalType::Integer {
+            })) => Ok(Self::U32),
+            Some(LogicalType::Integer(IntType {
                 bit_width: 64,
                 is_signed: false,
-            }) => Ok(Self::U64),
-            Some(LogicalType::Integer {
+            })) => Ok(Self::U64),
+            Some(LogicalType::Integer(IntType {
                 bit_width: 32,
                 is_signed: true,
-            }) => Ok(Self::I32),
-            Some(LogicalType::Integer {
+            })) => Ok(Self::I32),
+            Some(LogicalType::Integer(IntType {
                 bit_width: 64,
                 is_signed: true,
-            }) => Ok(Self::I64),
+            })) => Ok(Self::I64),
             Some(LogicalType::Date) => Ok(Self::Date),
-            Some(LogicalType::Timestamp {
+            Some(LogicalType::Timestamp(TimestampType {
                 is_adjusted_to_u_t_c: true,
                 unit: TimeUnit::MILLIS,
-            }) => Ok(Self::DateTime(DateTimeUnit::Millis)),
-            Some(LogicalType::Timestamp {
+            })) => Ok(Self::DateTime(DateTimeUnit::Millis)),
+            Some(LogicalType::Timestamp(TimestampType {
                 is_adjusted_to_u_t_c: true,
                 unit: TimeUnit::MICROS,
-            }) => Ok(Self::DateTime(DateTimeUnit::Micros)),
+            })) => Ok(Self::DateTime(DateTimeUnit::Micros)),
             Some(other) => Err(Error::UnsupportedLogicalType(other.clone())),
         }
     }
