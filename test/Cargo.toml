@@ -1,5 +1,6 @@
 [package]
 name = "parquetry-test"
+publish = false
 authors = { workspace = true }
 repository = { workspace = true }
 version = { workspace = true }
